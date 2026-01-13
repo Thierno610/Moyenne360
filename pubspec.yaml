@@ -1,0 +1,38 @@
+name: moyenne_auto
+description: Application Flutter pour calculer automatiquement les moyennes par niveau et matière.
+publish_to: "none"
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  google_fonts: ^6.2.1
+  file_picker: ^8.1.4
+  share_plus: ^10.1.2
+  path_provider: ^2.1.5
+  csv: ^6.0.0
+  flutter_animate: ^4.5.0
+  fl_chart: ^0.66.0
+  pdf: ^3.11.1
+  printing: ^5.13.3
+  excel: ^4.0.4
+  open_filex: ^4.5.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+
+
