@@ -11,6 +11,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:csv/csv.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:moyenne_auto/models/student_grade.dart';
+import 'package:moyenne_auto/services/grade_service.dart';
 
 void main() {
   SystemChrome.setSystemUIOverlayStyle(
@@ -168,20 +170,19 @@ class _LoginPageState extends State<LoginPage> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
-                          Icons.auto_graph_rounded,
-                          size: 64,
-                          color: Colors.white,
+                        Image.asset(
+                          'assets/images/logo.png',
+                          height: 150,
                         )
                             .animate(onPlay: (c) => c.repeat(reverse: true))
                             .scale(
                                 begin: const Offset(1, 1),
-                                end: const Offset(1.1, 1.1),
+                                end: const Offset(1.05, 1.05),
                                 duration: 2.seconds,
                                 curve: Curves.easeInOut)
                             .shimmer(
                                 duration: 2.seconds,
-                                color: Colors.white.withOpacity(0.5)),
+                                color: Colors.white.withOpacity(0.2)),
                         const SizedBox(height: 24),
                         Text(
                           'Moyennes Premium',
@@ -313,6 +314,11 @@ class MoyenneHomePage extends StatefulWidget {
 
 class _MoyenneHomePageState extends State<MoyenneHomePage> {
   final _formKey = GlobalKey<FormState>();
+  final _gradeService = GradeService();
+  List<StudentGrade> _classGrades = [];
+  double? _classAverage;
+  int _currentViewIndex = 0; // 0: Personal, 1: Class
+  
   final _niveauController = TextEditingController();
   final _matiereController = TextEditingController();
   final List<NoteItem> _notes = [];
@@ -545,6 +551,52 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
     }
   }
 
+  Future<void> _importClassFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['csv', 'xlsx', 'xls'],
+      );
+
+      if (result == null || result.files.single.path == null) return;
+
+      final file = File(result.files.single.path!);
+      final students = await _gradeService.parseFile(file);
+
+      if (students.isEmpty) throw Exception('Aucun étudiant trouvé');
+
+      _gradeService.calculateAverages(students);
+      _gradeService.rankStudents(students);
+      final classAvg = _gradeService.calculateClassAverage(students);
+
+      setState(() {
+        _classGrades = students;
+        _classAverage = classAvg;
+        _currentViewIndex = 1; // Switch to class view
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${students.length} étudiants importés !'),
+            backgroundColor: const Color(0xFF4ADE80),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur import classe: $e'),
+            backgroundColor: const Color(0xFFF87171),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -569,15 +621,23 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
                 children: [
                   _buildHeader(),
                   const SizedBox(height: 24),
-                  _buildStatsGrid(),
-                  const SizedBox(height: 24),
-                  _buildActionButtons(),
-                  const SizedBox(height: 24),
-                  _buildFilters(),
-                  const SizedBox(height: 16),
-                  _buildAddForm(),
-                  const SizedBox(height: 24),
-                  _buildNotesList(),
+                  if (_currentViewIndex == 0) ...[
+                    _buildStatsGrid(),
+                    const SizedBox(height: 24),
+                    _buildActionButtons(),
+                    const SizedBox(height: 24),
+                    _buildFilters(),
+                    const SizedBox(height: 16),
+                    _buildAddForm(),
+                    const SizedBox(height: 24),
+                    _buildNotesList(),
+                  ] else ...[
+                     _buildActionButtons(),
+                     const SizedBox(height: 24),
+                    _buildClassStats(),
+                     const SizedBox(height: 24),
+                    _buildClassList(),
+                  ],
                   const SizedBox(height: 80), // Bottom padding
                 ],
               ),
@@ -656,6 +716,29 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
           children: [
             Expanded(
               child: _GlassButton(
+                icon: Icons.person,
+                label: 'Perso',
+                 isActive: _currentViewIndex == 0,
+                onTap: () => setState(() => _currentViewIndex = 0),
+              ),
+            ),
+             const SizedBox(width: 12),
+            Expanded(
+              child: _GlassButton(
+                icon: Icons.groups,
+                label: 'Classe',
+                isActive: _currentViewIndex == 1,
+                onTap: () => setState(() => _currentViewIndex = 1),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (_currentViewIndex == 0) ...[
+        Row(
+          children: [
+            Expanded(
+              child: _GlassButton(
                 icon: Icons.add_chart,
                 label: 'Exemple',
                 onTap: _ajouterExemple,
@@ -694,8 +777,130 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
             ),
           ],
         ),
+        ] else ...[
+           Row(
+          children: [
+            Expanded(
+              child: _GlassButton(
+                icon: Icons.upload_file,
+                label: 'Importer Classe (CSV/Excel)',
+                onTap: _importClassFile,
+              ),
+            ),
+          ],
+        ),
+        ],
       ],
     ).animate().fadeIn(delay: 400.ms);
+  }
+
+  Widget _buildClassStats() {
+    if (_classGrades.isEmpty) return const SizedBox.shrink();
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisSpacing: 16,
+      mainAxisSpacing: 16,
+      childAspectRatio: 1.5,
+      children: [
+         _StatCard(
+          title: 'Effectif',
+          value: '${_classGrades.length}',
+          icon: Icons.groups,
+          color: const Color(0xFF38BDF8),
+        ),
+        _StatCard(
+          title: 'Moyenne Classe',
+          value: _classAverage?.toStringAsFixed(2) ?? '--',
+          icon: Icons.insights,
+          color: const Color(0xFFF472B6),
+        ),
+      ],
+    ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2);
+  }
+
+  Widget _buildClassList() {
+    if (_classGrades.isEmpty) {
+       return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            children: [
+              Icon(Icons.upload_file,
+                  size: 64, color: Colors.white.withOpacity(0.2)),
+              const SizedBox(height: 16),
+              Text(
+                'Importez un fichier CSV/Excel',
+                style: TextStyle(color: Colors.white.withOpacity(0.5)),
+              ),
+            ],
+          ),
+        ),
+      ).animate().fadeIn();
+    }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _classGrades.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final student = _classGrades[index];
+        final isTop3 = index < 3;
+        final rank = student.rank;
+        
+        Color rankColor = Colors.white;
+        if (rank == 1) rankColor = const Color(0xFFFFD700); // Gold
+        if (rank == 2) rankColor = const Color(0xFFC0C0C0); // Silver
+        if (rank == 3) rankColor = const Color(0xFFCD7F32); // Bronze
+
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isTop3 ? rankColor.withOpacity(0.5) : Colors.white.withOpacity(0.1),
+               width: isTop3 ? 2 : 1,
+            ),
+          ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            leading: CircleAvatar(
+              backgroundColor: rankColor.withOpacity(0.2),
+              child: Text(
+                '#$rank',
+                style: TextStyle(
+                  color: rankColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            title: Text(
+              student.name,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF6366F1).withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                student.average?.toStringAsFixed(2) ?? '--',
+                style: const TextStyle(
+                  color: Color(0xFF6366F1),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ).animate().fadeIn(delay: (50 * index).ms).slideX();
+      },
+    );
   }
 
   Widget _buildFilters() {
@@ -1122,11 +1327,13 @@ class _GlassButton extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
+     this.isActive = false,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final bool isActive;
 
   @override
   Widget build(BuildContext context) {
@@ -1138,18 +1345,18 @@ class _GlassButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.white.withOpacity(0.2)),
+            border: Border.all(color: isActive ? const Color(0xFF6366F1) : Colors.white.withOpacity(0.2)),
             borderRadius: BorderRadius.circular(16),
-            color: Colors.white.withOpacity(0.05),
+            color: isActive ? const Color(0xFF6366F1).withOpacity(0.3) : Colors.white.withOpacity(0.05),
           ),
           child: Column(
             children: [
-              Icon(icon, color: Colors.white),
+              Icon(icon, color: isActive ? Colors.white : Colors.white70),
               const SizedBox(height: 4),
               Text(
                 label,
-                style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                    color: isActive ? Colors.white : Colors.white.withOpacity(0.7), fontWeight: FontWeight.w600),
               ),
             ],
           ),

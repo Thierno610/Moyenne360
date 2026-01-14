@@ -1,0 +1,14 @@
+00:00 +0: loading C:/Users/Thierno Mouctar/Desktop/Applicaition/test/grade_service_test.dart
+00:00 +0 -1: loading C:/Users/Thierno Mouctar/Desktop/Applicaition/test/grade_service_test.dart [E]
+  Failed to load "C:/Users/Thierno Mouctar/Desktop/Applicaition/test/grade_service_test.dart":
+  Compilation failed for testPath=C:/Users/Thierno Mouctar/Desktop/Applicaition/test/grade_service_test.dart: lib/services/grade_service.dart:78:24: Error: A value of type 'CellValue?' can't be assigned to a variable of type 'double?'.
+   - 'CellValue' is from 'package:excel/excel.dart' ('../../AppData/Local/Pub/Cache/hosted/pub.dev/excel-4.0.6/lib/excel.dart').
+                 grade = cellValue;
+                         ^
+  lib/services/grade_service.dart:80:34: Error: The method 'toDouble' isn't defined for the class 'CellValue?'.
+   - 'CellValue' is from 'package:excel/excel.dart' ('../../AppData/Local/Pub/Cache/hosted/pub.dev/excel-4.0.6/lib/excel.dart').
+  Try correcting the name to the name of an existing method, or defining a method named 'toDouble'.
+                 grade = cellValue.toDouble();
+                                   ^^^^^^^^
+  .
+00:00 +0 -1: Some tests failed.
