@@ -1014,97 +1014,172 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
   }
 
   Widget _buildAdminActions() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 700;
+        final children = [
+          Expanded(
+            flex: isMobile ? 0 : 1,
+            child: _buildActionButton(
+              title: 'Saisie Manuelle',
+              subtitle: 'Ajouter notes & élèves',
+              icon: Icons.edit_note_rounded,
+              color: const Color(0xFF10B981),
+              isFilled: true,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (ctx) => ManualEntryPage(
+                      selectedLevel: _selectedLevel ?? '',
+                      classGrades: _classGrades,
+                      onStudentsUpdated: (students) {
+                        setState(() {
+                          _classGrades = students;
+                          _gradeService.calculateAverages(_classGrades);
+                          _gradeService.rankStudents(_classGrades);
+                          _classAverage =
+                              _gradeService.calculateClassAverage(_classGrades);
+                        });
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          SizedBox(width: isMobile ? 0 : 16, height: isMobile ? 16 : 0),
+          Expanded(
+            flex: isMobile ? 0 : 1,
+            child: _buildActionButton(
+              title: 'Importer Données',
+              subtitle: 'Fichiers Excel ou CSV',
+              icon: Icons.upload_file_rounded,
+              color: Colors.blue,
+              isFilled: false,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (ctx) => FileUploadPage(
+                      selectedLevel: _selectedLevel ?? '',
+                      onFileImported: (students, classAvg) {
+                        setState(() {
+                          _classGrades = students;
+                          _classAverage = classAvg;
+                          _entryMode = _EntryMode.upload;
+                        });
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ];
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-             Expanded(
-               child: ElevatedButton(
-                 style: ElevatedButton.styleFrom(
-                   backgroundColor: const Color(0xFF10B981),
-                   foregroundColor: Colors.white,
-                   padding: const EdgeInsets.symmetric(vertical: 20),
-                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                   elevation: 0,
-                 ),
-                 onPressed: () {
-                    Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (ctx) => ManualEntryPage(
-                        selectedLevel: _selectedLevel ?? '',
-                        classGrades: _classGrades,
-                        onStudentsUpdated: (students) {
-                          setState(() {
-                            _classGrades = students;
-                            _gradeService.calculateAverages(_classGrades);
-                            _gradeService.rankStudents(_classGrades);
-                            _classAverage = _gradeService.calculateClassAverage(_classGrades);
-                          });
-                        },
-                      ),
-                    ),
-                  );
-                 },
-                 child: const Text('SAISIR MANUELLEMENT', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-               ),
-             ),
-             const SizedBox(width: 16),
-             Expanded(
-               child: OutlinedButton(
-                 style: OutlinedButton.styleFrom(
-                   foregroundColor: const Color(0xFF10B981),
-                   side: const BorderSide(color: Color(0xFF10B981), width: 2),
-                   padding: const EdgeInsets.symmetric(vertical: 20),
-                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                 ),
-                 onPressed: () {
-                    Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (ctx) => FileUploadPage(
-                        selectedLevel: _selectedLevel ?? '',
-                        onFileImported: (students, classAvg) {
-                          setState(() {
-                            _classGrades = students;
-                            _classAverage = classAvg;
-                            _entryMode = _EntryMode.upload;
-                          });
-                        },
-                      ),
-                    ),
-                  );
-                 },
-                 child: const Text('IMPORTER DONNEÉS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-               ),
-             ),
+            isMobile
+                ? Column(
+                    children: children
+                        .map((e) => SizedBox(width: double.infinity, child: e))
+                        .toList())
+                : Row(children: children),
+            const SizedBox(height: 16),
+            // Existing small badges
+            Row(
+              children: [
+                _buildBadge('ÉLÈVE INDIVIDUEL', Colors.blueGrey, false),
+                const SizedBox(width: 8),
+                _buildBadge('CLASSE ENTIÈRE', const Color(0xFF10B981), true),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildActionButton({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required bool isFilled,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+        decoration: BoxDecoration(
+          color: isFilled ? color : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: isFilled ? null : Border.all(color: color.withOpacity(0.5), width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(isFilled ? 0.3 : 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            )
           ],
         ),
-        const SizedBox(height: 16),
-        Row(
+        child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                color: isFilled ? Colors.white.withOpacity(0.2) : color.withOpacity(0.1),
+                shape: BoxShape.circle,
               ),
-              child: const Text('ÉLÈVE INDIVIDUEL', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+              child: Icon(icon, color: isFilled ? Colors.white : color, size: 28),
             ),
-             const SizedBox(width: 8),
-             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF10B981),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text('CLASSE ENTIÈRE', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+            const SizedBox(width: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.outfit(
+                      color: isFilled ? Colors.white : Colors.black87,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.outfit(
+                      color: isFilled ? Colors.white.withOpacity(0.8) : Colors.grey,
+                      fontSize: 12),
+                ),
+              ],
             ),
+            const Spacer(),
+            Icon(Icons.arrow_forward_ios_rounded,
+                color: isFilled ? Colors.white.withOpacity(0.8) : Colors.grey[400], size: 16),
           ],
         ),
-      ],
+      ),
+    ).animate().scale(begin: const Offset(0.95, 0.95), curve: Curves.easeOut);
+  }
+
+  Widget _buildBadge(String text, Color color, bool filled) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: filled ? color : Colors.white,
+        borderRadius: BorderRadius.circular(4),
+        border: filled ? null : Border.all(color: Colors.grey.withOpacity(0.3)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+            fontWeight: FontWeight.bold, 
+            color: filled ? Colors.white : color,
+            fontSize: 12),
+      ),
     );
   }
 
