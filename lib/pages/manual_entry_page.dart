@@ -74,12 +74,12 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
     };
 
     // Calculate initial average
-    row['average'] = _calculateAverage(n1, n2, n3);
+    row['average'] = _calculateAverage(n1, n2, n3) ?? 0.0;
 
     // Add listeners
     void updateListener() {
       setState(() {
-        row['average'] = _calculateAverage(note1Ctrl.text, note2Ctrl.text, note3Ctrl.text);
+        row['average'] = _calculateAverage(note1Ctrl.text, note2Ctrl.text, note3Ctrl.text) ?? 0.0;
       });
     }
 
@@ -135,7 +135,7 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text('Saisie Notes - ${widget.selectedLevel}'),
-        backgroundColor: const Color(0xFF3B82F6),
+        backgroundColor: const Color(0xFF10B981),
         foregroundColor: Colors.white,
         centerTitle: true,
         leading: IconButton(
@@ -165,7 +165,7 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
                  const Spacer(),
                  ElevatedButton.icon(
                    style: ElevatedButton.styleFrom(
-                     backgroundColor: const Color(0xFF3B82F6),
+                     backgroundColor: const Color(0xFF10B981),
                      foregroundColor: Colors.white,
                    ),
                    onPressed: _saveChanges,
@@ -187,7 +187,7 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
                 Expanded(child: Center(child: Text('NOTE 1', style: TextStyle(fontWeight: FontWeight.bold)))),
                 Expanded(child: Center(child: Text('NOTE 2', style: TextStyle(fontWeight: FontWeight.bold)))),
                 Expanded(child: Center(child: Text('NOTE 3', style: TextStyle(fontWeight: FontWeight.bold)))),
-                Expanded(child: Center(child: Text('MOYENNE', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF3B82F6))))), // Added Moyenne Header
+                Expanded(child: Center(child: Text('MOYENNE', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF10B981))))), // Added Moyenne Header
                 SizedBox(width: 40),
               ],
             ),

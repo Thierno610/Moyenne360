@@ -7,42 +7,56 @@ class GradeService {
   Future<List<StudentGrade>> parseFile(File file) async {
     final extension = file.path.split('.').last.toLowerCase();
 
-    if (extension == 'csv') {
-      return _parseCsv(file);
-    } else if (extension == 'xlsx' || extension == 'xls') {
-      return _parseExcel(file);
-    } else {
-      throw Exception('Format de fichier non supporté. Utilisez CSV ou Excel.');
+    try {
+      if (extension == 'csv') {
+        return _parseCsv(file);
+      } else if (extension == 'xlsx' || extension == 'xls') {
+        return _parseExcel(file);
+      } else {
+        throw Exception('Format de fichier non supporté. Utilisez CSV ou Excel.');
+      }
+    } catch (e) {
+      throw Exception('Erreur lors de la lecture du fichier: $e');
     }
   }
 
   Future<List<StudentGrade>> _parseCsv(File file) async {
     final input = await file.readAsString();
-    final rows = const CsvToListConverter().convert(input, fieldDelimiter: ';');
+    
+    // Try semicolon first, then comma
+    List<List<dynamic>> rows = const CsvToListConverter().convert(input, fieldDelimiter: ';');
+    if (rows.isEmpty || (rows.length == 1 && rows.first.length == 1)) {
+       // Only one field? might be comma separated
+       rows = const CsvToListConverter().convert(input, fieldDelimiter: ',');
+    }
 
     if (rows.isEmpty) return [];
 
-    // Assume generic format: Name, Subject1, Subject2, ...
-    final headers = rows.first.map((e) => e.toString()).toList();
+    // Headers: Name, Subj1, Subj2...
+    final headers = rows.first.map((e) => e.toString().trim()).toList();
     final List<StudentGrade> students = [];
 
     for (int i = 1; i < rows.length; i++) {
       final row = rows[i];
       if (row.isEmpty) continue;
 
-      String name = row[0].toString();
+      // Safe access
+      String name = row.isNotEmpty ? row[0].toString() : 'Inconnu';
       Map<String, double> grades = {};
 
       for (int j = 1; j < row.length; j++) {
         if (j < headers.length) {
-          double? grade = double.tryParse(row[j].toString().replaceAll(',', '.'));
+          final rawVal = row[j].toString().replaceAll(',', '.').trim();
+          double? grade = double.tryParse(rawVal);
           if (grade != null) {
             grades[headers[j]] = grade;
           }
         }
       }
 
-      students.add(StudentGrade(name: name, grades: grades));
+      if (name.isNotEmpty) {
+        students.add(StudentGrade(name: name, grades: grades));
+      }
     }
 
     return students;
@@ -56,54 +70,83 @@ class GradeService {
     for (var table in excel.tables.keys) {
       final sheet = excel.tables[table];
       if (sheet == null) continue;
-
       if (sheet.maxRows == 0) continue;
 
-      // Assume first row is header
-      final headers = sheet.rows.first.map((e) => e?.value.toString() ?? '').toList();
+      // Parse Headers
+      final headers = <String>[];
+      final firstRow = sheet.rows.first;
+      for (var cell in firstRow) {
+        headers.add(_getCellValueAsString(cell));
+      }
 
+      // Parse Data
       for (int i = 1; i < sheet.rows.length; i++) {
         final row = sheet.rows[i];
-         if (row.isEmpty) continue;
+        if (row.isEmpty) continue;
 
-        String name = row[0]?.value.toString() ?? 'Inconnu';
+        String name = _getCellValueAsString(row[0]);
+        if (name.isEmpty) continue;
+
         Map<String, double> grades = {};
 
         for (int j = 1; j < row.length; j++) {
           if (j < headers.length) {
-             final cellValue = row[j]?.value;
-             double? grade;
-             
-             if (cellValue != null) {
-               // Safely try to extract the value from the CellValue wrapper
-               dynamic val = cellValue;
-               try {
-                 // Try to access .value property (common in excel package versions)
-                 val = (cellValue as dynamic).value;
-               } catch (_) {
-                 // Fallback if .value doesn't exist
-                 val = cellValue;
-               }
-               
-               if (val is double) {
-                 grade = val;
-               } else if (val is int) {
-                 grade = val.toDouble();
-               } else {
-                 final s = val.toString();
-                 grade = double.tryParse(s.replaceAll(',', '.'));
-               }
+             double? grade = _getCellValueAsDouble(row[j]);
+             if (grade != null) {
+               grades[headers[j]] = grade;
              }
-
-            if (grade != null) {
-              grades[headers[j]] = grade;
-            }
           }
         }
         students.add(StudentGrade(name: name, grades: grades));
       }
     }
     return students;
+  }
+  
+  String _getCellValueAsString(dynamic cell) {
+    if (cell == null) return '';
+    dynamic val;
+    try {
+      val = cell.value;
+    } catch (_) {
+      val = cell;
+    }
+    
+    if (val == null) return '';
+
+    if (val is TextCellValue) {
+      return val.value.toString(); // Ensure String
+    } else if (val is IntCellValue) {
+      return val.value.toString();
+    } else if (val is DoubleCellValue) {
+      return val.value.toString();
+    } else if (val is DateCellValue) {
+        return val.asDateTimeLocal().toString();
+    }
+    
+    return val.toString();
+  }
+
+  double? _getCellValueAsDouble(dynamic cell) {
+    if (cell == null) return null;
+    dynamic val;
+    try {
+       val = cell.value;
+    } catch (_) {
+       val = cell;
+    }
+    
+    if (val == null) return null;
+
+    if (val is DoubleCellValue) {
+      return val.value;
+    } else if (val is IntCellValue) {
+      return val.value.toDouble();
+    } else if (val is TextCellValue) {
+       return double.tryParse(val.value.toString().replaceAll(',', '.').trim());
+    } 
+    
+    return double.tryParse(val.toString().replaceAll(',', '.').trim());
   }
 
   void calculateAverages(List<StudentGrade> students) {

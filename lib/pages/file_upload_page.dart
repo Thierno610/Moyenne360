@@ -116,7 +116,7 @@ class _FileUploadPageState extends State<FileUploadPage> {
                  border: Border.all(color: Colors.grey.withOpacity(0.1), width: 2),
                  boxShadow: [
                    BoxShadow(
-                     color: const Color(0xFF6366F1).withOpacity(0.05),
+                     color: const Color(0xFF10B981).withOpacity(0.05),
                      blurRadius: 30,
                      offset: const Offset(0, 10),
                    )
@@ -161,7 +161,7 @@ class _FileUploadPageState extends State<FileUploadPage> {
                    const SizedBox(height: 48),
                    
                    if (_isLoading)
-                     const CircularProgressIndicator(color: Color(0xFF06B6D4))
+                     const CircularProgressIndicator(color: Color(0xFF10B981))
                    else
                      SizedBox(
                        width: double.infinity,
@@ -169,10 +169,10 @@ class _FileUploadPageState extends State<FileUploadPage> {
                        child: ElevatedButton.icon(
                          onPressed: _pickFile,
                          style: ElevatedButton.styleFrom(
-                           backgroundColor: const Color(0xFF06B6D4),
+                           backgroundColor: const Color(0xFF10B981),
                            foregroundColor: Colors.white,
                            elevation: 8,
-                           shadowColor: const Color(0xFF06B6D4).withOpacity(0.4),
+                           shadowColor: const Color(0xFF10B981).withOpacity(0.4),
                            shape: RoundedRectangleBorder(
                              borderRadius: BorderRadius.circular(16),
                            ),

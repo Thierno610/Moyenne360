@@ -16,6 +16,7 @@ import 'package:moyenne_auto/services/grade_service.dart';
 import 'package:moyenne_auto/pages/manual_entry_page.dart';
 import 'package:moyenne_auto/pages/file_upload_page.dart';
 import 'package:moyenne_auto/services/export_service.dart';
+import 'package:moyenne_auto/pages/settings_page.dart';
 
 void main() {
   SystemChrome.setSystemUIOverlayStyle(
@@ -35,7 +36,7 @@ class MoyenneApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Premium light/white palette
-    const primaryColor = Color(0xFF6366F1); // Indigo 500 (accent)
+    const primaryColor = Color(0xFF10B981); // Emerald 500 (Primary Green)
     // const secondaryColor = Color(0xFF06B6D4); // Cyan 500 (accent)
     const backgroundColor = Color(0xFFF9FAFB); // Very light background
 
@@ -85,11 +86,15 @@ class EntryShell extends StatefulWidget {
 class _EntryShellState extends State<EntryShell> {
   bool _isLoggedIn = false;
   String _userName = 'Invité';
+  String _userRole = 'Enseignant'; // Default
+  String _userLevel = 'Primaire'; // Default for teacher
 
-  void _onLogin(String email) {
+  void _onLogin(String email, String role, String level) {
     setState(() {
       _isLoggedIn = true;
       _userName = email.split('@')[0];
+      _userRole = role;
+      _userLevel = level;
     });
   }
 
@@ -103,7 +108,12 @@ class _EntryShellState extends State<EntryShell> {
   @override
   Widget build(BuildContext context) {
     if (_isLoggedIn) {
-      return MoyenneHomePage(userName: _userName, onLogout: _onLogout);
+      return MoyenneHomePage(
+        userName: _userName, 
+        userRole: _userRole,
+        userLevel: _userLevel,
+        onLogout: _onLogout
+      );
     }
     return LoginPage(onLogin: _onLogin);
   }
@@ -112,7 +122,7 @@ class _EntryShellState extends State<EntryShell> {
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key, required this.onLogin});
 
-  final void Function(String email) onLogin;
+  final void Function(String email, String role, String level) onLogin;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -126,6 +136,8 @@ class _LoginPageState extends State<LoginPage> {
   final _confirmPassword = TextEditingController();
   bool _showPassword = false;
   bool _isLogin = true;
+  String _selectedRole = 'Enseignant';
+  String _selectedTeachingLevel = 'Primaire';
 
   @override
   void dispose() {
@@ -138,7 +150,8 @@ class _LoginPageState extends State<LoginPage> {
 
   void _submit() {
     if (_formKey.currentState?.validate() != true) return;
-    widget.onLogin(_email.text.trim());
+    // Pass selected role and level (only relevant if role is teacher)
+    widget.onLogin(_email.text.trim(), _selectedRole, _selectedTeachingLevel);
   }
 
   @override
@@ -157,7 +170,7 @@ class _LoginPageState extends State<LoginPage> {
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                   child: Container(
-                    width: 480,
+                    constraints: const BoxConstraints(maxWidth: 480),
                     padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.9),
@@ -236,6 +249,92 @@ class _LoginPageState extends State<LoginPage> {
                                     .fadeIn(delay: 450.ms)
                                     .slideX(begin: -0.2),
                                 const SizedBox(height: 20),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.withOpacity(0.05),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      value: _selectedRole,
+                                      isExpanded: true,
+                                      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF1E293B)),
+                                      style: GoogleFonts.outfit(
+                                        color: const Color(0xFF1E293B),
+                                        fontSize: 16,
+                                      ),
+                                      onChanged: (String? newValue) {
+                                        setState(() {
+                                          _selectedRole = newValue!;
+                                        });
+                                      },
+                                      items: <String>['Enseignant', 'Directeur de programme']
+                                          .map<DropdownMenuItem<String>>((String value) {
+                                        return DropdownMenuItem<String>(
+                                          value: value,
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                value == 'Enseignant' ? Icons.school : Icons.admin_panel_settings,
+                                                color: const Color(0xFF10B981),
+                                                size: 20,
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Text(value),
+                                            ],
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                                ).animate().fadeIn(delay: 480.ms).slideX(begin: -0.2),
+                                const SizedBox(height: 20),
+                                if (_selectedRole == 'Enseignant') ...[
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.withOpacity(0.05),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                                      ),
+                                      child: DropdownButtonHideUnderline(
+                                        child: DropdownButton<String>(
+                                          value: _selectedTeachingLevel,
+                                          isExpanded: true,
+                                          icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF1E293B)),
+                                          style: GoogleFonts.outfit(
+                                            color: const Color(0xFF1E293B),
+                                            fontSize: 16,
+                                          ),
+                                          onChanged: (String? newValue) {
+                                            setState(() {
+                                              _selectedTeachingLevel = newValue!;
+                                            });
+                                          },
+                                          items: <String>['Primaire', 'Collège', 'Lycée']
+                                              .map<DropdownMenuItem<String>>((String value) {
+                                            return DropdownMenuItem<String>(
+                                              value: value,
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.class_,
+                                                    color: const Color(0xFF10B981),
+                                                    size: 20,
+                                                  ),
+                                                  const SizedBox(width: 12),
+                                                  Text(value),
+                                                ],
+                                              ),
+                                            );
+                                          }).toList(),
+                                        ),
+                                      ),
+                                    ).animate().fadeIn(delay: 490.ms).slideX(begin: -0.2),
+                                    const SizedBox(height: 20),
+                                ],
                               ],
                               _GlassTextField(
                                 controller: _password,
@@ -280,11 +379,11 @@ class _LoginPageState extends State<LoginPage> {
                                 height: 56,
                                 child: ElevatedButton(
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF6366F1),
+                                    backgroundColor: const Color(0xFF10B981),
                                     foregroundColor: Colors.white,
                                     elevation: 8,
                                     shadowColor:
-                                        const Color(0xFF6366F1).withOpacity(0.5),
+                                        const Color(0xFF10B981).withOpacity(0.5),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(16),
                                     ),
@@ -304,8 +403,9 @@ class _LoginPageState extends State<LoginPage> {
                                   .fadeIn(delay: 600.ms)
                                   .scale(begin: const Offset(0.8, 0.8)),
                               const SizedBox(height: 24),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                              Wrap(
+                                alignment: WrapAlignment.center,
+                                crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
                                   Text(
                                     _isLogin
@@ -358,10 +458,14 @@ class MoyenneHomePage extends StatefulWidget {
   const MoyenneHomePage({
     super.key,
     required this.userName,
+    this.userRole = 'Enseignant',
+    this.userLevel = 'Primaire',
     required this.onLogout,
   });
 
   final String userName;
+  final String userRole;
+  final String userLevel;
   final VoidCallback onLogout;
 
   @override
@@ -384,7 +488,12 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
   final _matiereController = TextEditingController();
   final List<NoteItem> _notes = [];
   String? _filtreNiveau;
+
   double? _moyenneGenerale;
+
+  // Search & Filter State
+  String _searchQuery = '';
+  String _filterOption = 'Tous'; // 'Tous', 'Admis', 'Échec'
 
   @override
   void dispose() {
@@ -681,6 +790,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9), // Light grey background
+      drawer: _buildDrawer(), // Added Drawer
       body: SafeArea(
         child: _selectedLevel == null
             ? Stack(children: [const _AnimatedBackground(), _buildLevelSelection()])
@@ -707,12 +817,133 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
     );
   }
 
+  Widget _buildDrawer() {
+    return Drawer(
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.horizontal(right: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          UserAccountsDrawerHeader(
+            decoration: const BoxDecoration(
+              color: Color(0xFF10B981),
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+            ),
+            accountName: Text(
+              widget.userName, 
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            accountEmail: Text(
+              '${widget.userRole} - ${widget.userLevel}',
+              style: TextStyle(color: Colors.white.withOpacity(0.9)),
+            ),
+            currentAccountPicture: CircleAvatar(
+              backgroundColor: Colors.white,
+              child: Text(
+                widget.userName.substring(0, 1).toUpperCase(),
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              children: [
+                _DrawerItem(
+                  icon: Icons.dashboard_rounded,
+                  text: 'Tableau de bord',
+                  isActive: true,
+                  onTap: () => Navigator.pop(context),
+                ),
+                _DrawerItem(
+                  icon: Icons.swap_horiz,
+                  text: 'Changer de niveau',
+                  onTap: () {
+                     Navigator.pop(context); // Close Drawer
+                     setState(() => _selectedLevel = null);
+                  },
+                ),
+                if (widget.userRole == 'Enseignant') ...[
+                   const Divider(indent: 20, endIndent: 20),
+                   Padding(
+                     padding: const EdgeInsets.only(left: 20, top: 10, bottom: 5),
+                     child: Text('MA CLASSE (${widget.userLevel})', style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
+                   ),
+                   _DrawerItem(
+                     icon: Icons.class_outlined,
+                     text: 'Gestion de classe',
+                     onTap: () => Navigator.pop(context),
+                   ),
+                   _DrawerItem(
+                     icon: Icons.edit_note,
+                     text: 'Saisie des notes',
+                     onTap: () => Navigator.pop(context),
+                   ),
+                ] else if (widget.userRole == 'Directeur de programme') ...[
+                   const Divider(indent: 20, endIndent: 20),
+                   const Padding(
+                     padding: EdgeInsets.only(left: 20, top: 10, bottom: 5),
+                     child: Text('ADMINISTRATION', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
+                   ),
+                   _DrawerItem(
+                     icon: Icons.analytics_outlined,
+                     text: 'Vue Globale',
+                     onTap: () => Navigator.pop(context),
+                   ),
+                   _DrawerItem(
+                     icon: Icons.people_outline,
+                     text: 'Gestion Enseignants',
+                     onTap: () => Navigator.pop(context),
+                   ),
+                ],
+                const Divider(indent: 20, endIndent: 20),
+                _DrawerItem(
+                  icon: Icons.settings_outlined,
+                  text: 'Paramètres',
+                  onTap: () {
+                    Navigator.pop(context); // Close Drawer
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const SettingsPage()),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          Container(
+             padding: const EdgeInsets.all(20),
+             child: InkWell(
+               onTap: widget.onLogout,
+               borderRadius: BorderRadius.circular(12),
+               child: Container(
+                 padding: const EdgeInsets.all(12),
+                 decoration: BoxDecoration(
+                   color: Colors.red.withOpacity(0.1),
+                   borderRadius: BorderRadius.circular(12),
+                 ),
+                 child: Row(
+                   children: [
+                     Icon(Icons.logout_rounded, color: Colors.red[400]),
+                     const SizedBox(width: 12),
+                     Text('Déconnexion', style: TextStyle(color: Colors.red[400], fontWeight: FontWeight.bold)),
+                   ],
+                 ),
+               ),
+             ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAdminHeader() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       decoration: const BoxDecoration(
-        color: Color(0xFF3B82F6), // Blue Header
+        color: Color(0xFF10B981), // Green Header
         boxShadow: [
           BoxShadow(
             color: Colors.black12,
@@ -723,9 +954,11 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
       ),
       child: Row(
         children: [
-          IconButton(
-            onPressed: () => setState(() => _selectedLevel = null),
-             icon: const Icon(Icons.arrow_back, color: Colors.white),
+          Builder(
+            builder: (context) => IconButton(
+              onPressed: () => Scaffold.of(context).openDrawer(),
+              icon: const Icon(Icons.menu, color: Colors.white),
+            ),
           ),
           const SizedBox(width: 8),
           const Text(
@@ -789,7 +1022,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
              Expanded(
                child: ElevatedButton(
                  style: ElevatedButton.styleFrom(
-                   backgroundColor: const Color(0xFF3B82F6),
+                   backgroundColor: const Color(0xFF10B981),
                    foregroundColor: Colors.white,
                    padding: const EdgeInsets.symmetric(vertical: 20),
                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -821,8 +1054,8 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
              Expanded(
                child: OutlinedButton(
                  style: OutlinedButton.styleFrom(
-                   foregroundColor: const Color(0xFF3B82F6),
-                   side: const BorderSide(color: Color(0xFF3B82F6), width: 2),
+                   foregroundColor: const Color(0xFF10B981),
+                   side: const BorderSide(color: Color(0xFF10B981), width: 2),
                    padding: const EdgeInsets.symmetric(vertical: 20),
                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                  ),
@@ -864,7 +1097,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
              Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFF3B82F6),
+                color: const Color(0xFF10B981),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: const Text('CLASSE ENTIÈRE', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
@@ -876,66 +1109,402 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
   }
 
   Widget _buildSplitView() {
-    // Responsive: Side-by-side on wide screens, Column on small
-     return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth > 800) {
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(flex: 3, child: _buildStudentsTable()),
-              const SizedBox(width: 24),
-              Expanded(flex: 2, child: _buildChart()),
-            ],
-          );
-        } else {
-           return SingleChildScrollView(
-             child: Column(
-               children: [
-                 _buildStudentsTable(),
-                 const SizedBox(height: 24),
-                 SizedBox(height: 300, child: _buildChart()),
-               ],
-             ),
-           );
-        }
-      },
+    if (_classGrades.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.query_stats, size: 64, color: Colors.grey.withOpacity(0.3)),
+            const SizedBox(height: 16),
+            Text(
+              'Aucune donnée pour les statistiques',
+              style: TextStyle(color: Colors.grey.withOpacity(0.5), fontSize: 16),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildGlobalStats(),
+          const SizedBox(height: 24),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth > 900) {
+                 // Wide screen: Table Left, Charts Right (stacked)
+                 return Row(
+                   crossAxisAlignment: CrossAxisAlignment.start,
+                   children: [
+                     Expanded(flex: 3, child: _buildStudentsTable()),
+                     const SizedBox(width: 24),
+                     Expanded(
+                       flex: 2, 
+                       child: Column(
+                         children: [
+                           _buildDistributionChart(),
+                           const SizedBox(height: 24),
+                           _buildChart(),
+                         ],
+                       ),
+                     ),
+                   ],
+                 );
+              } else {
+                 // Small screen:  Global Stats -> Charts -> Table
+                 return Column(
+                   children: [
+                     _buildDistributionChart(),
+                     const SizedBox(height: 24),
+                     SizedBox(height: 300, child: _buildChart()),
+                     const SizedBox(height: 24),
+                     _buildStudentsTable(),
+                   ],
+                 );
+              }
+            },
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildStudentsTable() {
+  Widget _buildGlobalStats() {
+    if (_classGrades.isEmpty) return const SizedBox.shrink();
+
+    double max = 0;
+    double min = 20;
+    int passCount = 0;
+
+    for (var s in _classGrades) {
+      final avg = s.average ?? 0;
+      if (avg > max) max = avg;
+      if (avg < min) min = avg;
+      if (avg >= 10) passCount++;
+    }
+    if (_classGrades.isEmpty) min = 0;
+
+    double successRate = (passCount / _classGrades.length) * 100;
+
+    return GridView.count(
+      crossAxisCount: 4,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisSpacing: 16,
+      mainAxisSpacing: 16,
+      childAspectRatio: 1.8,
+      children: [
+        _buildStatCard('Moyenne', _classAverage?.toStringAsFixed(2) ?? '--', Icons.show_chart, const Color(0xFF10B981)),
+        _buildStatCard('Réussite', '${successRate.toStringAsFixed(0)}%', Icons.check_circle_outline, Colors.blue),
+        _buildStatCard('Max', max.toStringAsFixed(2), Icons.arrow_upward, Colors.green),
+        _buildStatCard('Min', min.toStringAsFixed(2), Icons.arrow_downward, Colors.red),
+      ],
+    );
+  }
+
+  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
       ),
-      child: ClipRRect(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(width: 8),
+              Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(value, style: TextStyle(color: color, fontSize: 24, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDistributionChart() {
+    int range0_10 = 0;
+    int range10_12 = 0;
+    int range12_14 = 0;
+    int range14_16 = 0;
+    int range16_20 = 0;
+
+    for (var s in _classGrades) {
+      final avg = s.average ?? 0;
+      if (avg < 10) range0_10++;
+      else if (avg < 12) range10_12++;
+      else if (avg < 14) range12_14++;
+      else if (avg < 16) range14_16++;
+      else range16_20++;
+    }
+
+    return Container(
+      height: 300,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 500),
-            child: DataTable(
-              headingRowColor: MaterialStateProperty.all(const Color(0xFF3B82F6)),
-              headingTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              columns: const [
-                 DataColumn(label: Text('NOM')),
-                 DataColumn(label: Text('NOTES')),
-                 DataColumn(label: Text('MOYENNE')),
-                 DataColumn(label: Text('RANG')),
-              ],
-              rows: _classGrades.map((student) {
-                 return DataRow(cells: [
-                   DataCell(Text(student.name, style: const TextStyle(fontWeight: FontWeight.w500))),
-                   DataCell(Text(student.grades.length.toString())), // Placeholder for individual notes
-                   DataCell(Text(student.average?.toStringAsFixed(2) ?? '--')),
-                   DataCell(Text('#${student.rank}')),
-                 ]);
-              }).toList(),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+      ),
+      child: Column(
+        children: [
+          const Text('Distribution des Notes', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 20),
+          Expanded(
+            child: PieChart(
+              PieChartData(
+                sectionsSpace: 2,
+                centerSpaceRadius: 40,
+                sections: [
+                  if (range0_10 > 0) _buildPieSection(range0_10, '< 10', Colors.redAccent),
+                  if (range10_12 > 0) _buildPieSection(range10_12, '10-12', Colors.orangeAccent),
+                  if (range12_14 > 0) _buildPieSection(range12_14, '12-14', Colors.yellow),
+                  if (range14_16 > 0) _buildPieSection(range14_16, '14-16', Colors.lightGreen),
+                  if (range16_20 > 0) _buildPieSection(range16_20, '16-20', const Color(0xFF10B981)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Wrap(
+            spacing: 10,
+            children: [
+               _LegendItem(color: Colors.redAccent, text: '<10'),
+               _LegendItem(color: Colors.orangeAccent, text: '10-12'),
+               _LegendItem(color: Colors.yellow, text: '12-14'),
+               _LegendItem(color: Colors.lightGreen, text: '14-16'),
+               _LegendItem(color: Color(0xFF10B981), text: '16+'),
+            ],
+          )
+        ],
+      ),
+    );
+  }
+
+  PieChartSectionData _buildPieSection(int value, String title, Color color) {
+    return PieChartSectionData(
+      color: color,
+      value: value.toDouble(),
+      title: '$value',
+      radius: 50,
+      titleStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+    );
+  }
+
+  Widget _buildStudentsTable() {
+    // 1. Filtering Logic
+    List<StudentGrade> filteredList = _classGrades.where((s) {
+      // 1.1 Search
+      final matchesSearch = s.name.toLowerCase().contains(_searchQuery.toLowerCase());
+      
+      // 1.2 Filter Option
+      bool matchesFilter = true;
+      double avg = s.average ?? 0;
+      if (_filterOption == 'Admis') {
+        matchesFilter = avg >= 10;
+      } else if (_filterOption == 'Échec') {
+        matchesFilter = avg < 10;
+      }
+
+      return matchesSearch && matchesFilter;
+    }).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 2. Search & Filter Controls
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+          ),
+          child: Column(
+            children: [
+              // Search Bar
+              TextField(
+                decoration: InputDecoration(
+                  hintText: 'Rechercher un élève...',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  filled: true,
+                  fillColor: Colors.grey.withOpacity(0.05),
+                ),
+                onChanged: (v) => setState(() => _searchQuery = v),
+              ),
+              const SizedBox(height: 12),
+              // Filter Chips
+              Row(
+                children: [
+                  const Text('Filtre:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(width: 12),
+                  _buildFilterChip('Tous'),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Admis', color: const Color(0xFF10B981)),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Échec', color: Colors.redAccent),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        
+        // 3. Data Table
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 500),
+                child: DataTable(
+                  headingRowColor: MaterialStateProperty.all(const Color(0xFF10B981)),
+                  headingTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  columns: const [
+                     DataColumn(label: Text('NOM')),
+                     DataColumn(label: Text('NBR NOTES')),
+                     DataColumn(label: Text('MOYENNE')),
+                     DataColumn(label: Text('RANG')),
+                     DataColumn(label: Text('DÉTAILS')),
+                  ],
+                  rows: filteredList.map((student) {
+                     return DataRow(cells: [
+                       DataCell(Text(student.name, style: const TextStyle(fontWeight: FontWeight.w500))),
+                       DataCell(Text(student.grades.length.toString())),
+                       DataCell(
+                         Container(
+                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                           decoration: BoxDecoration(
+                             color: (student.average ?? 0) >= 10 
+                                 ? const Color(0xFF10B981).withOpacity(0.1) 
+                                 : Colors.red.withOpacity(0.1),
+                             borderRadius: BorderRadius.circular(8),
+                           ),
+                           child: Text(
+                             student.average?.toStringAsFixed(2) ?? '--',
+                             style: TextStyle(
+                               fontWeight: FontWeight.bold,
+                               color: (student.average ?? 0) >= 10 
+                                   ? const Color(0xFF10B981) 
+                                   : Colors.red,
+                             ),
+                           ),
+                         )
+                       ),
+                       DataCell(Text('#${student.rank}')),
+                       DataCell(
+                         IconButton(
+                           icon: const Icon(Icons.visibility_outlined, color: Colors.grey),
+                           onPressed: () => _showStudentDetails(student),
+                         ),
+                       ),
+                     ]);
+                  }).toList(),
+                ),
+              ),
             ),
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildFilterChip(String label, {Color? color}) {
+    final isSelected = _filterOption == label;
+    final activeColor = color ?? Colors.blue;
+    return InkWell(
+      onTap: () => setState(() => _filterOption = label),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? activeColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: isSelected ? activeColor : Colors.grey.withOpacity(0.3)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.grey[700], 
+            fontWeight: FontWeight.w500,
+            fontSize: 13,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showStudentDetails(StudentGrade student) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: const Color(0xFF10B981).withOpacity(0.1),
+              child: Text(student.name[0], style: const TextStyle(color: Color(0xFF10B981))),
+            ),
+            const SizedBox(width: 12),
+            Text(student.name),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: const Text('Moyenne Générale'),
+                trailing: Text(
+                  student.average?.toStringAsFixed(2) ?? '--',
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const Divider(),
+              const Align(
+                alignment: Alignment.centerLeft, 
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Text('Notes par matière:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  shrinkWrap: true,
+                  children: student.grades.entries.map((e) {
+                     return ListTile(
+                       dense: true,
+                       title: Text(e.key),
+                       trailing: Text(e.value.toStringAsFixed(2), style: const TextStyle(fontWeight: FontWeight.bold)),
+                     );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Fermer')),
+        ],
       ),
     );
   }
@@ -995,7 +1564,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
                barRods: [
                  BarChartRodData(
                    toY: e.value.average ?? 0,
-                   color: const Color(0xFF3B82F6),
+                   color: const Color(0xFF10B981),
                    width: 16,
                    borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
                  )
@@ -1016,7 +1585,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
         child: Text(
           'MOYENNE GÉNÉRALE CLASSE: ${_classAverage?.toStringAsFixed(2) ?? '--'}',
           style: const TextStyle(
-             color: Color(0xFF3B82F6),
+             color: Color(0xFF10B981),
              fontSize: 18,
              fontWeight: FontWeight.bold,
           ),
@@ -1027,45 +1596,91 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
 
   Widget _buildLevelSelection() {
     return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Choisissez votre niveau',
-              style: TextStyle(
-                color: const Color(0xFF1E293B).withOpacity(0.8),
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-              ),
-            ).animate().fadeIn().slideY(begin: 0.2),
-            const SizedBox(height: 32),
-            _LevelCard(
-              title: 'Primaire',
-              subtitle: 'CP - CM2',
-              icon: Icons.child_care_rounded,
-              color: Colors.orange,
-              onTap: () => _onLevelSelected('Primaire'),
-            ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.2),
-            const SizedBox(height: 20),
-            _LevelCard(
-              title: 'Collège',
-              subtitle: '6ème - 3ème',
-              icon: Icons.menu_book_rounded,
-              color: Colors.indigo,
-              onTap: () => _onLevelSelected('Collège'),
-            ).animate().fadeIn(delay: 200.ms).slideX(begin: 0.2),
-            const SizedBox(height: 20),
-            _LevelCard(
-              title: 'Lycée',
-              subtitle: 'Seconde - Terminale',
-              icon: Icons.school_rounded,
-              color: Colors.pink,
-              onTap: () => _onLevelSelected('Lycée'),
-            ).animate().fadeIn(delay: 300.ms).slideX(begin: -0.2),
-           const SizedBox(height: 48), // Padding bottom
-          ],
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 600),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Welcome Header
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [const Color(0xFF10B981), const Color(0xFF059669)],
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(color: const Color(0xFF10B981).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))
+                  ]
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+                      child: const Icon(Icons.school, size: 40, color: Colors.white),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Bienvenue, ${widget.userName}',
+                      style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Sélectionnez votre espace de travail',
+                      style: GoogleFonts.outfit(color: Colors.white.withOpacity(0.9), fontSize: 16),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ).animate().fadeIn().slideY(begin: -0.2),
+              
+              const SizedBox(height: 48),
+              
+              Text(
+                'NIVEAUX ACADÉMIQUES',
+                style: GoogleFonts.outfit(color: Colors.grey[600], fontWeight: FontWeight.bold, letterSpacing: 1.2, fontSize: 13),
+                textAlign: TextAlign.center,
+              ).animate().fadeIn(delay: 200.ms),
+              
+              const SizedBox(height: 24),
+              
+              _LevelCard(
+                title: 'PRIMAIRE',
+                subtitle: 'Classes CP à CM2',
+                icon: Icons.backpack_outlined,
+                color: Colors.orangeAccent,
+                onTap: () => _onLevelSelected('Primaire'),
+              ).animate().fadeIn(delay: 300.ms).slideX(),
+              
+              const SizedBox(height: 16),
+              
+              _LevelCard(
+                title: 'COLLÈGE',
+                subtitle: 'Classes 6ème à 3ème',
+                icon: Icons.menu_book_rounded,
+                color: Colors.blueAccent,
+                onTap: () => _onLevelSelected('Collège'),
+              ).animate().fadeIn(delay: 400.ms).slideX(),
+              
+              const SizedBox(height: 16),
+              
+              _LevelCard(
+                title: 'LYCÉE',
+                subtitle: 'Seconde à Terminale',
+                icon: Icons.architecture_rounded,
+                color: Colors.purpleAccent,
+                onTap: () => _onLevelSelected('Lycée'),
+              ).animate().fadeIn(delay: 500.ms).slideX(),
+              
+              const SizedBox(height: 40),
+            ],
+          ),
         ),
       ),
     );
@@ -2580,3 +3195,55 @@ class _PremiumActionCard extends StatelessWidget {
   }
 }
 
+
+class _LegendItem extends StatelessWidget {
+  final Color color;
+  final String text;
+  const _LegendItem({super.key, required this.color, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 4),
+        Text(text, style: const TextStyle(fontSize: 12)),
+      ],
+    );
+  }
+}
+
+class _DrawerItem extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  final VoidCallback onTap;
+  final bool isActive;
+
+  const _DrawerItem({
+    super.key,
+    required this.icon,
+    required this.text,
+    required this.onTap,
+    this.isActive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon, color: isActive ? const Color(0xFF10B981) : Colors.grey[600]),
+      title: Text(
+        text,
+        style: TextStyle(
+          color: isActive ? const Color(0xFF10B981) : Colors.grey[800],
+          fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+        ),
+      ),
+      onTap: onTap,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+      selected: isActive,
+      selectedTileColor: const Color(0xFF10B981).withOpacity(0.1),
+    );
+  }
+}
