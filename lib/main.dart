@@ -18,7 +18,10 @@ import 'package:moyenne_auto/pages/file_upload_page.dart';
 import 'package:moyenne_auto/services/auth_service.dart';
 import 'package:moyenne_auto/services/export_service.dart';
 import 'package:moyenne_auto/services/database_service.dart';
+import 'package:moyenne_auto/services/database_service.dart';
 import 'package:moyenne_auto/pages/settings_page.dart';
+import 'package:moyenne_auto/pages/history_page.dart';
+import 'package:moyenne_auto/pages/coming_soon_page.dart';
 
 import 'package:moyenne_auto/services/theme_service.dart';
 
@@ -1166,6 +1169,14 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
                   onTap: () => Navigator.pop(context),
                 ),
                 _DrawerItem(
+                  icon: Icons.history_rounded,
+                  text: 'Historique',
+                  onTap: () {
+                     Navigator.pop(context);
+                     Navigator.push(context, MaterialPageRoute(builder: (c) => const HistoryPage()));
+                  },
+                ),
+                _DrawerItem(
                   icon: Icons.swap_horiz,
                   text: 'Changer de niveau',
                   onTap: () {
@@ -1182,12 +1193,44 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
                    _DrawerItem(
                      icon: Icons.class_outlined,
                      text: 'Gestion de classe',
-                     onTap: () => Navigator.pop(context),
+                     onTap: () {
+                       Navigator.pop(context);
+                       Navigator.push(
+                         context,
+                         MaterialPageRoute(
+                           builder: (ctx) => ManualEntryPage(
+                             selectedLevel: _selectedLevel ?? 'Lycée', // Default fallback
+                             classGrades: _classGrades,
+                             onStudentsUpdated: (students) async {
+                               _gradeService.calculateAverages(students);
+                               _gradeService.rankStudents(students);
+                               await _saveClassToDatabase(students);
+                             },
+                           ),
+                         ),
+                       );
+                     },
                    ),
                    _DrawerItem(
                      icon: Icons.edit_note,
                      text: 'Saisie des notes',
-                     onTap: () => Navigator.pop(context),
+                     onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                         context,
+                         MaterialPageRoute(
+                           builder: (ctx) => ManualEntryPage(
+                             selectedLevel: _selectedLevel ?? 'Lycée',
+                             classGrades: _classGrades,
+                             onStudentsUpdated: (students) async {
+                               _gradeService.calculateAverages(students);
+                               _gradeService.rankStudents(students);
+                               await _saveClassToDatabase(students);
+                             },
+                           ),
+                         ),
+                       );
+                     },
                    ),
                 ] else if (widget.userRole == 'Directeur de programme') ...[
                    const Divider(indent: 20, endIndent: 20),
@@ -1198,12 +1241,18 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
                    _DrawerItem(
                      icon: Icons.analytics_outlined,
                      text: 'Vue Globale',
-                     onTap: () => Navigator.pop(context),
+                     onTap: () {
+                       Navigator.pop(context);
+                       Navigator.push(context, MaterialPageRoute(builder: (c) => const ComingSoonPage(title: 'Vue Globale')));
+                     },
                    ),
                    _DrawerItem(
                      icon: Icons.people_outline,
                      text: 'Gestion Enseignants',
-                     onTap: () => Navigator.pop(context),
+                     onTap: () {
+                       Navigator.pop(context);
+                       Navigator.push(context, MaterialPageRoute(builder: (c) => const ComingSoonPage(title: 'Gestion Enseignants')));
+                     },
                    ),
                 ],
                 const Divider(indent: 20, endIndent: 20),

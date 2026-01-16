@@ -1,6 +1,7 @@
 import 'package:moyenne_auto/services/theme_service.dart';
 import 'package:moyenne_auto/pages/contact_page.dart';
 import 'package:moyenne_auto/pages/about_page.dart';
+import 'package:moyenne_auto/pages/faq_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});

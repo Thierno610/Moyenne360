@@ -117,14 +117,14 @@ class _AboutPageState extends State<AboutPage> {
               context,
               title: 'Politique de Confidentialité',
               icon: Icons.privacy_tip_outlined,
-              onTap: () {},
+              onTap: () => _showLegalDialog(context, 'Politique de Confidentialité', 'Nous respectons votre vie privée. Toutes les données sont stockées localement sur votre appareil et ne sont jamais partagées avec des tiers sans votre consentement explicite.'),
             ),
              const SizedBox(height: 16),
              _buildActionCard(
               context,
               title: 'Conditions d\'utilisation',
               icon: Icons.description_outlined,
-              onTap: () {},
+              onTap: () => _showLegalDialog(context, 'Conditions d\'utilisation', 'L\'utilisation de cette application est réservée à un usage éducatif. Les développeurs ne sont pas responsables des erreurs de calcul potentielles ou des pertes de données.'),
             ),
 
             const SizedBox(height: 48),
@@ -135,6 +135,23 @@ class _AboutPageState extends State<AboutPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showLegalDialog(BuildContext context, String title, String content) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title, style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        content: Text(content, style: GoogleFonts.outfit()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Fermer', style: GoogleFonts.outfit(color: const Color(0xFF10B981))),
+          ),
+        ],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
   }

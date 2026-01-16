@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:moyenne_auto/models/student_grade.dart';
 
 class ManualEntryPage extends StatefulWidget {
@@ -30,7 +31,6 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
 
   @override
   void dispose() {
-    // Dispose all controllers
     for (var row in _rows) {
       (row['name'] as TextEditingController).dispose();
       (row['note1'] as TextEditingController).dispose();
@@ -46,7 +46,7 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
         final notesValues = student.grades.values.toList();
         _addRow(
           name: student.name,
-          n1: notesValues.length > 0 ? notesValues[0].toString() : '',
+          n1: notesValues.isNotEmpty ? notesValues[0].toString() : '',
           n2: notesValues.length > 1 ? notesValues[1].toString() : '',
           n3: notesValues.length > 2 ? notesValues[2].toString() : '',
         );
@@ -126,23 +126,43 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
     }
     
     widget.onStudentsUpdated(newGrades);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Modifications enregistrées !'),
+        backgroundColor: Color(0xFF10B981),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
     Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text('Saisie Notes - ${widget.selectedLevel}'),
-        backgroundColor: const Color(0xFF10B981),
-        foregroundColor: Colors.white,
+        title: Text('Saisie Notes (${widget.selectedLevel})', style: GoogleFonts.outfit(color: theme.textTheme.bodyLarge?.color)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: Icon(Icons.arrow_back_ios_new, color: theme.iconTheme.color, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.check_rounded, color: Color(0xFF10B981)),
+            onPressed: _saveChanges,
+          )
+        ],
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _addEmptyRow,
+        backgroundColor: const Color(0xFF10B981),
+        child: const Icon(Icons.add, color: Colors.white),
+      ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
       body: LayoutBuilder(
         builder: (context, constraints) {
           if (constraints.maxWidth < 700) {
@@ -156,119 +176,130 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
   }
 
   Widget _buildMobileView() {
-    return Column(
-      children: [
-        _buildToolbar(),
-        Expanded(
-          child: ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: _rows.length,
-            separatorBuilder: (c, i) => const SizedBox(height: 16),
-            itemBuilder: (context, index) {
-              final row = _rows[index];
-              final avg = row['average'] as double?;
-              return Container(
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+      itemCount: _rows.length,
+      itemBuilder: (context, index) {
+        final row = _rows[index];
+        final avg = row['average'] as double?;
+        
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: theme.cardTheme.color,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+            ],
+            border: isDark ? Border.all(color: Colors.white.withOpacity(0.05)) : null,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                   Container(
+                     width: 32, height: 32,
+                     decoration: BoxDecoration(
+                       color: const Color(0xFF10B981).withOpacity(0.1),
+                       shape: BoxShape.circle,
+                     ),
+                     child: Center(
+                       child: Text('${index + 1}', style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold, fontSize: 14)),
+                     ),
+                   ),
+                   const SizedBox(width: 12),
+                   Expanded(
+                     child: TextField(
+                        controller: row['name'],
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16, color: theme.textTheme.bodyLarge?.color),
+                        decoration: InputDecoration(
+                          hintText: 'Nom de l\'élève',
+                          hintStyle: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.4)),
+                          border: InputBorder.none,
+                          isDense: true,
+                        ),
+                     ),
+                   ),
+                   IconButton(
+                     icon: Icon(Icons.delete_outline, color: Colors.redAccent.withOpacity(0.7)),
+                     onPressed: () {
+                        setState(() {
+                          _rows.removeAt(index);
+                        });
+                     },
+                   ),
+                ],
+              ),
+              const Divider(height: 24),
+              Row(
+                children: [
+                  Expanded(child: _buildMobileNoteInput(row['note1'], 'Note 1')),
+                  const SizedBox(width: 8),
+                  Expanded(child: _buildMobileNoteInput(row['note2'], 'Note 2')),
+                  const SizedBox(width: 8),
+                  Expanded(child: _buildMobileNoteInput(row['note3'], 'Note 3')),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: (avg != null && avg >= 10) 
+                      ? const Color(0xFF10B981).withOpacity(0.1) 
+                      : Colors.red.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
-                  border: Border.all(color: Colors.grey.withOpacity(0.1)),
                 ),
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 16,
-                          backgroundColor: const Color(0xFF10B981).withOpacity(0.1),
-                          child: Text('${index + 1}', style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold, fontSize: 12)),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                             controller: row['name'],
-                             decoration: const InputDecoration(
-                               hintText: 'Nom Prénom',
-                               border: InputBorder.none,
-                               isDense: true,
-                             ),
-                             style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                          onPressed: () {
-                             (row['name'] as TextEditingController).dispose();
-                             (row['note1'] as TextEditingController).dispose();
-                             (row['note2'] as TextEditingController).dispose();
-                             (row['note3'] as TextEditingController).dispose();
-                             setState(() => _rows.removeAt(index));
-                          },
-                        ),
-                      ],
-                    ),
-                    const Divider(),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildMobileNoteInput(row['note1'], 'Note 1'),
-                        _buildMobileNoteInput(row['note2'], 'Note 2'),
-                        _buildMobileNoteInput(row['note3'], 'Note 3'),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: avg != null && avg >= 10 ? const Color(0xFF10B981).withOpacity(0.1) : Colors.red.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('MOYENNE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                          Text(
-                            avg?.toStringAsFixed(2) ?? '-',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: avg != null && avg >= 10 ? const Color(0xFF10B981) : Colors.red,
-                            ),
-                          ),
-                        ],
+                    Text('MOYENNE', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 12, color: theme.textTheme.bodyMedium?.color)),
+                    Text(
+                      avg?.toStringAsFixed(2) ?? '-',
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: (avg != null && avg >= 10) ? const Color(0xFF10B981) : Colors.redAccent,
                       ),
                     ),
                   ],
                 ),
-              );
-            },
+              ),
+            ],
           ),
-        ),
-      ],
+        ).animate().fadeIn(delay: (50 * index).ms).slideX(begin: 0.1);
+      },
     );
   }
 
   Widget _buildMobileNoteInput(TextEditingController ctrl, String label) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[600])),
-        const SizedBox(height: 4),
+        Text(label, style: GoogleFonts.outfit(fontSize: 11, color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5))),
+        const SizedBox(height: 6),
         Container(
-          width: 60,
-          height: 40,
-          alignment: Alignment.center,
+          height: 44,
           decoration: BoxDecoration(
-             color: Colors.grey[50],
-             borderRadius: BorderRadius.circular(8),
-             border: Border.all(color: Colors.grey[300]!),
+             color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[50],
+             borderRadius: BorderRadius.circular(12),
+             border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
           ),
-          child: TextField(
-             controller: ctrl,
-             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-             textAlign: TextAlign.center,
-             decoration: const InputDecoration(border: InputBorder.none),
-             style: const TextStyle(fontWeight: FontWeight.bold),
+          child: Center(
+            child: TextField(
+               controller: ctrl,
+               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+               textAlign: TextAlign.center,
+               style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: theme.textTheme.bodyLarge?.color),
+               decoration: const InputDecoration(border: InputBorder.none, contentPadding: EdgeInsets.zero),
+            ),
           ),
         ),
       ],
@@ -276,141 +307,122 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
   }
 
   Widget _buildDesktopView() {
-    return Column(
-      children: [
-        _buildToolbar(),
-        // Grid Header
-        Container(
-          color: const Color(0xFFE2E8F0),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: const Row(
-            children: [
-              SizedBox(width: 40, child: Center(child: Text('#', style: TextStyle(fontWeight: FontWeight.bold)))),
-              Expanded(flex: 3, child: Padding(padding: EdgeInsets.only(left: 8), child: Text('NOM PRENOM', style: TextStyle(fontWeight: FontWeight.bold)))),
-              Expanded(child: Center(child: Text('NOTE 1', style: TextStyle(fontWeight: FontWeight.bold)))),
-              Expanded(child: Center(child: Text('NOTE 2', style: TextStyle(fontWeight: FontWeight.bold)))),
-              Expanded(child: Center(child: Text('NOTE 3', style: TextStyle(fontWeight: FontWeight.bold)))),
-              Expanded(child: Center(child: Text('MOYENNE', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF10B981))))), 
-              SizedBox(width: 40),
-            ],
-          ),
-        ),
-        
-        // Grid Rows
-        Expanded(
-          child: ListView.builder(
-            itemCount: _rows.length,
-            itemBuilder: (context, index) {
-              final row = _rows[index];
-              final avg = row['average'] as double?;
-              
-              return Container(
-                decoration: const BoxDecoration(
-                  border: Border(bottom: BorderSide(color: Colors.black12)),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    SizedBox(width: 40, child: Center(child: Text('${index + 1}'))),
-                    Expanded(
-                      flex: 3, 
-                      child: Padding(
-                         padding: const EdgeInsets.symmetric(horizontal: 8),
-                         child: TextField(
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+            decoration: BoxDecoration(
+              color: const Color(0xFF10B981),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4))],
+            ),
+            child: Row(
+              children: [
+                SizedBox(width: 40, child: Text('#', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white))),
+                Expanded(flex: 3, child: Text('NOM & PRÉNOM', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white))),
+                Expanded(child: Center(child: Text('NOTE 1', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white)))),
+                Expanded(child: Center(child: Text('NOTE 2', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white)))),
+                Expanded(child: Center(child: Text('NOTE 3', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white)))),
+                Expanded(child: Center(child: Text('MOYENNE', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white)))),
+                const SizedBox(width: 48), // Action space
+              ],
+            ),
+          ).animate().fadeIn().slideY(begin: -0.2),
+          
+          const SizedBox(height: 16),
+          
+          Expanded(
+            child: ListView.separated(
+              itemCount: _rows.length,
+              separatorBuilder: (c, i) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final row = _rows[index];
+                final avg = row['average'] as double?;
+                
+                return Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 24),
+                  decoration: BoxDecoration(
+                    color: theme.cardTheme.color,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: const Offset(0, 2))],
+                  ),
+                  child: Row(
+                    children: [
+                      SizedBox(width: 40, child: Text('${index + 1}', style: GoogleFonts.outfit(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5)))),
+                      Expanded(
+                        flex: 3, 
+                        child: TextField(
                            controller: row['name'],
-                           decoration: const InputDecoration(border: InputBorder.none, hintText: 'Nom Élève'),
-                         ),
-                      ),
-                    ),
-                    _buildNoteCell(row['note1']),
-                    _buildNoteCell(row['note2']),
-                    _buildNoteCell(row['note3']),
-                    // Average Cell
-                    Expanded(
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          border: Border(left: BorderSide(color: Colors.black12)),
-                          color: Color(0xFFF1F5F9), 
+                           style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: theme.textTheme.bodyLarge?.color),
+                           decoration: InputDecoration(
+                             border: InputBorder.none, 
+                             hintText: 'Nom Élève',
+                             hintStyle: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.3))
+                           ),
                         ),
+                      ),
+                      _buildDesktopNoteCell(row['note1']),
+                      _buildDesktopNoteCell(row['note2']),
+                      _buildDesktopNoteCell(row['note3']),
+                      // Average Cell
+                      Expanded(
                         child: Center(
-                          child: Text(
-                            avg?.toStringAsFixed(2) ?? '-',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: avg != null && avg >= 10 ? Colors.green : (avg != null ? Colors.red : Colors.black),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: avg != null && avg >= 10 ? const Color(0xFF10B981).withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              avg?.toStringAsFixed(2) ?? '-',
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.bold,
+                                color: avg != null && avg >= 10 ? const Color(0xFF10B981) : Colors.redAccent,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    SizedBox(
-                      width: 40, 
-                      child: IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.grey, size: 20),
-                        onPressed: () {
-                           (row['name'] as TextEditingController).dispose();
-                           (row['note1'] as TextEditingController).dispose();
-                           (row['note2'] as TextEditingController).dispose();
-                           (row['note3'] as TextEditingController).dispose();
-                           setState(() => _rows.removeAt(index));
-                        },
+                      IconButton(
+                        icon: Icon(Icons.close_rounded, color: theme.iconTheme.color?.withOpacity(0.3)),
+                         onPressed: () {
+                            setState(() {
+                              _rows.removeAt(index);
+                            });
+                         },
                       ),
-                    ),
-                  ],
-                ),
-              );
-            },
+                    ],
+                  ),
+                ).animate().fadeIn(delay: (30 * index).ms).slideX(begin: 0.1);
+              },
+            ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildToolbar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
-         border: Border(bottom: BorderSide(color: Colors.black12)),
-      ),
-      child: Row(
-        children: [
-           ElevatedButton.icon(
-             style: ElevatedButton.styleFrom(
-               backgroundColor: Colors.green,
-               foregroundColor: Colors.white,
-             ),
-             onPressed: _addEmptyRow,
-             icon: const Icon(Icons.add),
-             label: const Text('Ajouter'),
-           ),
-           const Spacer(),
-           ElevatedButton.icon(
-             style: ElevatedButton.styleFrom(
-               backgroundColor: const Color(0xFF10B981),
-               foregroundColor: Colors.white,
-             ),
-             onPressed: _saveChanges,
-             icon: const Icon(Icons.save),
-             label: const Text('Enregistrer'),
-           ),
         ],
       ),
     );
   }
   
-  Widget _buildNoteCell(TextEditingController ctrl) {
+  Widget _buildDesktopNoteCell(TextEditingController ctrl) {
+      final theme = Theme.of(context);
       return Expanded(
-        child: Container(
-          decoration: const BoxDecoration(
-            border: Border(left: BorderSide(color: Colors.black12)),
-          ),
-          child: Center(
-            child: TextField(
-               controller: ctrl,
-               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-               textAlign: TextAlign.center,
-               decoration: const InputDecoration(border: InputBorder.none, hintText: '-'),
-            ),
+        child: Center(
+          child: Container(
+             width: 60,
+             decoration: BoxDecoration(
+               color: theme.canvasColor,
+               borderRadius: BorderRadius.circular(8),
+             ),
+             child: TextField(
+                controller: ctrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                textAlign: TextAlign.center,
+                style: GoogleFonts.outfit(color: theme.textTheme.bodyLarge?.color),
+                decoration: const InputDecoration(border: InputBorder.none, hintText: '-'),
+             ),
           ),
         ),
       );
