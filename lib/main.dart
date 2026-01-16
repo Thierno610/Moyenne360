@@ -20,7 +20,12 @@ import 'package:moyenne_auto/services/export_service.dart';
 import 'package:moyenne_auto/services/database_service.dart';
 import 'package:moyenne_auto/pages/settings_page.dart';
 
-void main() {
+import 'package:moyenne_auto/services/theme_service.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await themeService.loadTheme();
+  
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -37,41 +42,88 @@ class MoyenneApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Premium light/white palette
-    const primaryColor = Color(0xFF10B981); // Emerald 500 (Primary Green)
-    // const secondaryColor = Color(0xFF06B6D4); // Cyan 500 (accent)
-    const backgroundColor = Color(0xFFF9FAFB); // Very light background
-
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Moyennes360',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: primaryColor,
-          brightness: Brightness.light,
-          surface: Colors.white,
-          background: backgroundColor,
-        ),
-        scaffoldBackgroundColor: backgroundColor,
-        textTheme: GoogleFonts.outfitTextTheme(ThemeData.light().textTheme),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          centerTitle: true,
-          iconTheme: IconThemeData(color: Colors.black87),
-          titleTextStyle: TextStyle(color: Colors.black87, fontSize: 20, fontWeight: FontWeight.w700),
-        ),
-        cardTheme: CardTheme(
-          color: Colors.white,
-          elevation: 6,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: BorderSide(color: Colors.grey.withOpacity(0.12)),
-          ),
+    // Premium Colors
+    const primaryColor = Color(0xFF10B981); // Emerald 500
+    
+    // Light Theme
+    final lightTheme = ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: primaryColor,
+        brightness: Brightness.light,
+        surface: Colors.white,
+        background: const Color(0xFFF8FAFC), // Slate 50
+      ),
+      scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+      textTheme: GoogleFonts.outfitTextTheme(ThemeData.light().textTheme),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        iconTheme: IconThemeData(color: Color(0xFF1E293B)), // Slate 800
+        titleTextStyle: TextStyle(color: Color(0xFF1E293B), fontSize: 20, fontWeight: FontWeight.w700),
+      ),
+      cardTheme: CardTheme(
+        color: Colors.white,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: Colors.grey.withOpacity(0.12)),
         ),
       ),
-      home: const EntryShell(),
+    );
+
+    // Dark Theme (Deep Glass / Premium Slate)
+    final darkTheme = ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: primaryColor,
+        brightness: Brightness.dark,
+        surface: const Color(0xFF1E293B), // Slate 800
+        background: const Color(0xFF0F172A), // Slate 900
+      ),
+      scaffoldBackgroundColor: const Color(0xFF0F172A),
+      textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        iconTheme: IconThemeData(color: Colors.white),
+        titleTextStyle: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700),
+      ),
+      cardTheme: CardTheme(
+        color: const Color(0xFF1E293B), // Slate 800
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: Colors.white.withOpacity(0.05)),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFF334155), // Slate 700
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        hintStyle: TextStyle(color: Colors.grey[400]),
+      ),
+    );
+
+    return AnimatedBuilder(
+      animation: themeService,
+      builder: (context, child) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Moyennes360',
+          theme: lightTheme,
+          darkTheme: darkTheme,
+          themeMode: themeService.themeMode,
+          home: const EntryShell(),
+        );
+      },
     );
   }
 }
@@ -195,16 +247,25 @@ class _LoginPageState extends State<LoginPage> {
           const _AnimatedBackground(),
           
           Center(
-            child: SingleChildScrollView(
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(24),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(32),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                  child: Container(
-                    constraints: const BoxConstraints(maxWidth: 480),
-                    padding: const EdgeInsets.all(32),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  physics: const ClampingScrollPhysics(), // Allow scroll if really needed, but FittedBox below tries to avoid it.
+                  padding: const EdgeInsets.all(24),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight - 48, // Ensure it takes height if needed
+                    ),
+                    child: Center(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(32),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                            child: Container(
+                              width: 420, // Check explicit width for scaling
+                              padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.9),
                       borderRadius: BorderRadius.circular(32),
@@ -512,9 +573,16 @@ class _LoginPageState extends State<LoginPage> {
                       ],
                     ),
                   ),
+                    ),
+                  ),
                 ),
-              ),
-            ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
           ),
         ],
       ),
@@ -1202,7 +1270,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
             ),
           ),
           const SizedBox(width: 8),
-          Flexible(
+          Expanded(
             child: Text(
               'CALCUL MOYENNE CLASSE',
               overflow: TextOverflow.ellipsis,
@@ -1214,7 +1282,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
               ),
             ),
           ),
-          const Spacer(),
+          const SizedBox(width: 8),
           Container(
             height: 40,
             decoration: BoxDecoration(

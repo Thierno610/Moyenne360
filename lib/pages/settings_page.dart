@@ -1,8 +1,6 @@
-import 'package:flutter/material.dart';
-import 'dart:io';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:moyenne_auto/pages/profile_edit_page.dart';
+import 'package:moyenne_auto/services/theme_service.dart';
+import 'package:moyenne_auto/pages/contact_page.dart';
+import 'package:moyenne_auto/pages/about_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -13,7 +11,6 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   bool _notificationsEnabled = true;
-  bool _darkMode = false;
   bool _biometricEnabled = false;
 
   // Mock User Data
@@ -29,14 +26,14 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9), // Light grey
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text('Paramètres', style: GoogleFonts.outfit(color: Colors.black)),
+        title: Text('Paramètres', style: GoogleFonts.outfit(color: Theme.of(context).textTheme.bodyLarge?.color)),
         centerTitle: true,
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new, color: Theme.of(context).iconTheme.color, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -66,12 +63,18 @@ class _SettingsPageState extends State<SettingsPage> {
                     onChanged: (v) => setState(() => _notificationsEnabled = v),
                   ),
                   _buildDivider(),
-                  _buildSwitchTile(
-                    icon: Icons.dark_mode_outlined,
-                    title: 'Mode Sombre',
-                    subtitle: 'Thème foncé',
-                    value: _darkMode,
-                    onChanged: (v) => setState(() => _darkMode = v),
+                  // Use AnimatedBuilder to listen to theme changes for the switch UI update
+                  AnimatedBuilder(
+                    animation: themeService,
+                    builder: (context, child) {
+                      return _buildSwitchTile(
+                        icon: Icons.dark_mode_outlined,
+                        title: 'Mode Sombre',
+                        subtitle: 'Thème foncé premium',
+                        value: themeService.isDarkMode,
+                        onChanged: (v) => themeService.toggleTheme(),
+                      );
+                    },
                   ),
                   _buildDivider(),
                   _buildSwitchTile(
@@ -175,13 +178,13 @@ class _SettingsPageState extends State<SettingsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(_userData['name']!, style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(_userData['name']!, style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodyLarge?.color)),
                   const SizedBox(height: 4),
                   Text('Modifier le profil', style: GoogleFonts.outfit(color: const Color(0xFF10B981), fontSize: 13, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 16),
+            Icon(Icons.arrow_forward_ios, color: Theme.of(context).iconTheme.color?.withOpacity(0.3), size: 16),
           ],
         ),
       ),
@@ -195,18 +198,19 @@ class _SettingsPageState extends State<SettingsPage> {
     required bool value,
     required ValueChanged<bool> onChanged,
   }) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          Icon(icon, color: Colors.grey[700], size: 22),
+          Icon(icon, color: theme.iconTheme.color?.withOpacity(0.7), size: 22),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w500)),
-                Text(subtitle, style: GoogleFonts.outfit(color: Colors.grey, fontSize: 12)),
+                Text(title, style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w500, color: theme.textTheme.bodyLarge?.color)),
+                Text(subtitle, style: GoogleFonts.outfit(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6), fontSize: 12)),
               ],
             ),
           ),
@@ -221,16 +225,17 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildActionTile(IconData icon, String title, VoidCallback onTap) {
+    final theme = Theme.of(context);
     return InkWell(
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         child: Row(
           children: [
-            Icon(icon, color: Colors.grey[700], size: 22),
+            Icon(icon, color: theme.iconTheme.color?.withOpacity(0.7), size: 22),
             const SizedBox(width: 16),
-            Expanded(child: Text(title, style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w500))),
-            const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 14),
+            Expanded(child: Text(title, style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w500, color: theme.textTheme.bodyLarge?.color))),
+            Icon(Icons.arrow_forward_ios, color: theme.iconTheme.color?.withOpacity(0.3), size: 14),
           ],
         ),
       ),
@@ -238,11 +243,11 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildDivider() {
-    return Divider(height: 1, color: Colors.grey.withOpacity(0.1));
+    return Divider(height: 1, color: Theme.of(context).dividerColor.withOpacity(0.1));
   }
 
   BoxDecoration get _cardDecoration => BoxDecoration(
-    color: Colors.white,
+    color: Theme.of(context).cardTheme.color,
     borderRadius: BorderRadius.circular(16),
     boxShadow: [
       BoxShadow(

@@ -77,15 +77,16 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text('Modifier Profil', style: GoogleFonts.outfit(color: Colors.black)),
+        title: Text('Modifier Profil', style: GoogleFonts.outfit(color: theme.textTheme.bodyLarge?.color)),
         centerTitle: true,
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new, color: theme.iconTheme.color, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
@@ -111,7 +112,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                       decoration: BoxDecoration(
                         color: const Color(0xFF10B981).withOpacity(0.1),
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 4),
+                        border: Border.all(color: theme.cardTheme.color ?? Colors.white, width: 4),
                         boxShadow: [
                           BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))
                         ],
@@ -196,7 +197,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
         style: GoogleFonts.outfit(
           fontSize: 13,
           fontWeight: FontWeight.bold,
-          color: Colors.grey[600],
+          color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
           letterSpacing: 1.2,
         ),
       ),
@@ -210,20 +211,26 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     bool readOnly = false,
     int maxLines = 1,
   }) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.bold)),
+        Text(label, style: GoogleFonts.outfit(fontSize: 12, color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7), fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
           readOnly: readOnly,
           maxLines: maxLines,
-          style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w500, color: readOnly ? Colors.grey : Colors.black87),
+          style: GoogleFonts.outfit(
+            fontSize: 15, 
+            fontWeight: FontWeight.w500, 
+            color: readOnly ? theme.textTheme.bodyLarge?.color?.withOpacity(0.5) : theme.textTheme.bodyLarge?.color
+          ),
           decoration: InputDecoration(
             isDense: true,
             hintText: 'Entrez $label',
-            prefixIcon: Icon(icon, size: 20, color: Colors.grey),
+            hintStyle: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.4)),
+            prefixIcon: Icon(icon, size: 20, color: theme.iconTheme.color?.withOpacity(0.5)),
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(vertical: 8),
           ),
@@ -235,12 +242,12 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   Widget _buildDivider() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Divider(height: 1, color: Colors.grey.withOpacity(0.1)),
+      child: Divider(height: 1, color: Theme.of(context).dividerColor.withOpacity(0.1)),
     );
   }
 
   BoxDecoration get _cardDecoration => BoxDecoration(
-    color: Colors.white,
+    color: Theme.of(context).cardTheme.color,
     borderRadius: BorderRadius.circular(16),
     boxShadow: [
       BoxShadow(
