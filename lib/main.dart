@@ -17,6 +17,7 @@ import 'package:moyenne_auto/pages/manual_entry_page.dart';
 import 'package:moyenne_auto/pages/file_upload_page.dart';
 import 'package:moyenne_auto/services/auth_service.dart';
 import 'package:moyenne_auto/services/export_service.dart';
+import 'package:moyenne_auto/services/database_service.dart';
 import 'package:moyenne_auto/pages/settings_page.dart';
 
 void main() {
@@ -195,6 +196,7 @@ class _LoginPageState extends State<LoginPage> {
           
           Center(
             child: SingleChildScrollView(
+              physics: const NeverScrollableScrollPhysics(),
               padding: const EdgeInsets.all(24),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(32),
@@ -541,9 +543,12 @@ class MoyenneHomePage extends StatefulWidget {
 class _MoyenneHomePageState extends State<MoyenneHomePage> {
   final _formKey = GlobalKey<FormState>();
   final _gradeService = GradeService();
+  final _databaseService = DatabaseService();
   List<StudentGrade> _classGrades = [];
   double? _classAverage;
   String? _selectedLevel;
+  int? _currentClassId; // ID de la classe actuelle dans la base
+  bool _isLoading = false;
 
   /// Mode de saisie choisi après la sélection du niveau.
   /// - manual: l'utilisateur saisit les élèves/notes dans l'app
@@ -571,6 +576,178 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
   @override
   void initState() {
     super.initState();
+    _initializeDatabase();
+  }
+
+  /// Initialise la base de données avec les niveaux et matières par défaut
+  Future<void> _initializeDatabase() async {
+    try {
+      // Initialiser la base de données
+      await _databaseService.database;
+      
+      // Vérifier et créer les niveaux par défaut
+      final existingLevels = await _databaseService.getAllLevels();
+      if (existingLevels.isEmpty) {
+        await _databaseService.insertLevel('Primaire');
+        await _databaseService.insertLevel('Collège');
+        await _databaseService.insertLevel('Lycée');
+      }
+
+      // Créer les matières par défaut pour chaque niveau
+      final levels = await _databaseService.getAllLevels();
+      for (var level in levels) {
+        final levelId = level['id'] as int;
+        final levelName = level['name'] as String;
+        final existingSubjects = await _databaseService.getSubjectsByLevel(levelId);
+        
+        if (existingSubjects.isEmpty) {
+          // Matières par défaut selon le niveau
+          if (levelName == 'Primaire') {
+            await _databaseService.insertSubject('Mathématiques', levelId);
+            await _databaseService.insertSubject('Français', levelId);
+            await _databaseService.insertSubject('Sciences', levelId);
+            await _databaseService.insertSubject('Histoire-Géographie', levelId);
+          } else if (levelName == 'Collège') {
+            await _databaseService.insertSubject('Mathématiques', levelId);
+            await _databaseService.insertSubject('Français', levelId);
+            await _databaseService.insertSubject('Sciences', levelId);
+            await _databaseService.insertSubject('Histoire-Géographie', levelId);
+            await _databaseService.insertSubject('Anglais', levelId);
+          } else if (levelName == 'Lycée') {
+            await _databaseService.insertSubject('Mathématiques', levelId);
+            await _databaseService.insertSubject('Français', levelId);
+            await _databaseService.insertSubject('Physique-Chimie', levelId);
+            await _databaseService.insertSubject('SVT', levelId);
+            await _databaseService.insertSubject('Histoire-Géographie', levelId);
+            await _databaseService.insertSubject('Anglais', levelId);
+          }
+        }
+      }
+
+      // Si un niveau est sélectionné, charger les classes
+      if (widget.userLevel.isNotEmpty) {
+        await _loadClassesForLevel(widget.userLevel);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur initialisation base: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Charge les classes pour un niveau donné
+  Future<void> _loadClassesForLevel(String levelName) async {
+    try {
+      final levels = await _databaseService.getAllLevels();
+      final level = levels.firstWhere(
+        (l) => l['name'] == levelName,
+        orElse: () => {},
+      );
+      
+      if (level.isNotEmpty) {
+        final levelId = level['id'] as int;
+        final classes = await _databaseService.getClassesByLevel(levelId);
+        
+        // Si aucune classe n'existe, en créer une par défaut
+        if (classes.isEmpty && _selectedLevel != null) {
+          final classId = await _databaseService.insertClass(
+            '${_selectedLevel} - Classe 1',
+            levelId,
+            academicYear: DateTime.now().year.toString(),
+          );
+          _currentClassId = classId;
+        } else if (classes.isNotEmpty) {
+          _currentClassId = classes.first['id'] as int;
+          await _loadClassData(_currentClassId!);
+        }
+      }
+    } catch (e) {
+      print('Erreur chargement classes: $e');
+    }
+  }
+
+  /// Charge les données d'une classe depuis la base
+  Future<void> _loadClassData(int classId) async {
+    setState(() => _isLoading = true);
+    try {
+      final students = await _databaseService.getStudentsWithAverages(classId);
+      final classAvg = await _databaseService.getClassAverage(classId);
+      
+      setState(() {
+        _classGrades = students;
+        _classAverage = classAvg;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur chargement: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Sauvegarde les étudiants dans la base de données
+  Future<void> _saveClassToDatabase(List<StudentGrade> students) async {
+    if (_currentClassId == null) {
+      // Créer une nouvelle classe si nécessaire
+      final levels = await _databaseService.getAllLevels();
+      final levelName = _selectedLevel ?? widget.userLevel;
+      final level = levels.firstWhere(
+        (l) => l['name'] == levelName,
+        orElse: () => {},
+      );
+      
+      if (level.isEmpty) return;
+      
+      final levelId = level['id'] as int;
+      _currentClassId = await _databaseService.insertClass(
+        '${levelName} - ${DateTime.now().toString().split(' ').first}',
+        levelId,
+        academicYear: DateTime.now().year.toString(),
+      );
+    }
+
+    // Extraire les matières des notes des étudiants
+    final allSubjects = <String>{};
+    for (var student in students) {
+      allSubjects.addAll(student.grades.keys);
+    }
+
+    // S'assurer que toutes les matières existent dans la base
+    final levels = await _databaseService.getAllLevels();
+    final levelName = _selectedLevel ?? widget.userLevel;
+    final level = levels.firstWhere(
+      (l) => l['name'] == levelName,
+      orElse: () => {},
+    );
+    
+    if (level.isNotEmpty) {
+      final levelId = level['id'] as int;
+      final existingSubjects = await _databaseService.getSubjectsByLevel(levelId);
+      final existingSubjectNames = existingSubjects.map((s) => s['name'] as String).toSet();
+      
+      for (var subjectName in allSubjects) {
+        if (!existingSubjectNames.contains(subjectName)) {
+          await _databaseService.insertSubject(subjectName, levelId);
+        }
+      }
+    }
+
+    // Sauvegarder les étudiants et leurs notes
+    await _databaseService.saveClassGrades(_currentClassId!, students);
+    
+    // Recharger les données
+    await _loadClassData(_currentClassId!);
   }
 
   // Ancien thème dynamique (non utilisé dans le nouveau dashboard).
@@ -825,15 +1002,13 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
       _gradeService.rankStudents(students);
       final classAvg = _gradeService.calculateClassAverage(students);
 
-      setState(() {
-        _classGrades = students;
-        _classAverage = classAvg;
-      });
+      // Sauvegarder dans la base de données
+      await _saveClassToDatabase(students);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${students.length} étudiants importés !'),
+            content: Text('${students.length} étudiants importés et sauvegardés !'),
             backgroundColor: const Color(0xFF4ADE80),
             behavior: SnackBarBehavior.floating,
           ),
@@ -1027,13 +1202,16 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
             ),
           ),
           const SizedBox(width: 8),
-          const Text(
-            'CALCUL MOYENNE CLASSE',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1,
+          Flexible(
+            child: Text(
+              'CALCUL MOYENNE CLASSE',
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1,
+              ),
             ),
           ),
           const Spacer(),
@@ -1099,14 +1277,19 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
                     builder: (ctx) => ManualEntryPage(
                       selectedLevel: _selectedLevel ?? '',
                       classGrades: _classGrades,
-                      onStudentsUpdated: (students) {
-                        setState(() {
-                          _classGrades = students;
-                          _gradeService.calculateAverages(_classGrades);
-                          _gradeService.rankStudents(_classGrades);
-                          _classAverage =
-                              _gradeService.calculateClassAverage(_classGrades);
-                        });
+                      onStudentsUpdated: (students) async {
+                        _gradeService.calculateAverages(students);
+                        _gradeService.rankStudents(students);
+                        await _saveClassToDatabase(students);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Données sauvegardées avec succès !'),
+                              backgroundColor: Color(0xFF4ADE80),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
                       },
                     ),
                   ),
@@ -1129,12 +1312,20 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
                   MaterialPageRoute(
                     builder: (ctx) => FileUploadPage(
                       selectedLevel: _selectedLevel ?? '',
-                      onFileImported: (students, classAvg) {
+                      onFileImported: (students, classAvg) async {
+                        await _saveClassToDatabase(students);
                         setState(() {
-                          _classGrades = students;
-                          _classAverage = classAvg;
                           _entryMode = _EntryMode.upload;
                         });
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Fichier importé et sauvegardé !'),
+                              backgroundColor: Color(0xFF4ADE80),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
                       },
                     ),
                   ),
@@ -1266,49 +1457,53 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
       );
     }
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildGlobalStats(),
-          const SizedBox(height: 24),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              if (constraints.maxWidth > 900) {
-                 // Wide screen: Table Left, Charts Right (stacked)
-                 return Row(
-                   crossAxisAlignment: CrossAxisAlignment.start,
-                   children: [
-                     Expanded(flex: 3, child: _buildStudentsTable()),
-                     const SizedBox(width: 24),
-                     Expanded(
-                       flex: 2, 
-                       child: Column(
-                         children: [
-                           _buildDistributionChart(),
-                           const SizedBox(height: 24),
-                           _buildChart(),
-                         ],
-                       ),
-                     ),
-                   ],
-                 );
-              } else {
-                 // Small screen:  Global Stats -> Charts -> Table
-                 return Column(
-                   children: [
-                     _buildDistributionChart(),
-                     const SizedBox(height: 24),
-                     SizedBox(height: 300, child: _buildChart()),
-                     const SizedBox(height: 24),
-                     _buildStudentsTable(),
-                   ],
-                 );
-              }
-            },
-          ),
-        ],
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 900) {
+          // Mobile/Tablet View
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                _buildGlobalStats(),
+                const SizedBox(height: 24),
+                _buildDistributionChart(),
+                const SizedBox(height: 24),
+                SizedBox(height: 300, child: _buildChart()),
+                const SizedBox(height: 24),
+                _buildStudentsTable(),
+              ],
+            ),
+          );
+        } else {
+          // Desktop View
+          return SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildGlobalStats(),
+                const SizedBox(height: 24),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 3, child: _buildStudentsTable()),
+                    const SizedBox(width: 24),
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        children: [
+                          _buildDistributionChart(),
+                          const SizedBox(height: 24),
+                          _buildChart(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }
+      },
     );
   }
 
@@ -1885,38 +2080,11 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
                       style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
                     ),
                     
-                    if (_isBioAvailable) ...[
-                      const SizedBox(height: 24),
-                      Row(
-                        children: [
-                          Expanded(child: Divider(color: Colors.white.withOpacity(0.3))),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text(
-                              'OU',
-                              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
-                            ),
-                          ),
-                          Expanded(child: Divider(color: Colors.white.withOpacity(0.3))),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      IconButton(
-                        onPressed: _handleBiometricLogin,
-                        icon: const Icon(Icons.fingerprint, color: Colors.white, size: 42),
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.white.withOpacity(0.1),
-                          padding: const EdgeInsets.all(16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: BorderSide(color: Colors.white.withOpacity(0.2)),
-                          )
-                        ),
-                      ).animate().scale(delay: 500.ms),
+                    if (widget.userName.isEmpty) ...[
                       const SizedBox(height: 8),
                       Text(
-                        'Connexion biométrique',
-                        style: GoogleFonts.outfit(color: Colors.white.withOpacity(0.7), fontSize: 12),
+                        'Sélectionnez votre niveau',
+                        style: GoogleFonts.outfit(color: Colors.white.withOpacity(0.9), fontSize: 16),
                       ),
                     ],
 
@@ -2080,13 +2248,19 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
                       builder: (ctx) => ManualEntryPage(
                         selectedLevel: _selectedLevel ?? '',
                         classGrades: _classGrades,
-                        onStudentsUpdated: (students) {
-                          setState(() {
-                            _classGrades = students;
-                            _gradeService.calculateAverages(_classGrades);
-                            _gradeService.rankStudents(_classGrades);
-                            _classAverage = _gradeService.calculateClassAverage(_classGrades);
-                          });
+                        onStudentsUpdated: (students) async {
+                          _gradeService.calculateAverages(students);
+                          _gradeService.rankStudents(students);
+                          await _saveClassToDatabase(students);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Données sauvegardées avec succès !'),
+                                backgroundColor: Color(0xFF4ADE80),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
                         },
                       ),
                     ),
@@ -2156,11 +2330,13 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
   /// Appelé après le choix d'un niveau (Primaire / Collège / Lycée)
   /// pour demander à l'utilisateur s'il veut saisir les notes manuellement
   /// ou téléverser un fichier de classe.
-  void _onLevelSelected(String level) {
+  Future<void> _onLevelSelected(String level) async {
     setState(() {
       _selectedLevel = level;
       _entryMode = null;
     });
+    // Charger les classes pour ce niveau depuis la base de données
+    await _loadClassesForLevel(level);
     // _showDataEntryChoice(); // Removed to use new Dashboard buttons
   }
 

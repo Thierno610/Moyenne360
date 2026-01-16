@@ -14,7 +14,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   bool _notificationsEnabled = true;
   bool _darkMode = false;
-  bool _biometricsEnabled = false;
+  bool _biometricEnabled = false;
 
   // Mock User Data
   Map<String, String> _userData = {
