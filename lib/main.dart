@@ -15,6 +15,7 @@ import 'package:moyenne_auto/models/student_grade.dart';
 import 'package:moyenne_auto/services/grade_service.dart';
 import 'package:moyenne_auto/pages/manual_entry_page.dart';
 import 'package:moyenne_auto/pages/file_upload_page.dart';
+import 'package:moyenne_auto/services/export_service.dart';
 
 void main() {
   SystemChrome.setSystemUIOverlayStyle(
@@ -737,6 +738,39 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
             ),
           ),
           const Spacer(),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.download, color: Colors.white),
+            onSelected: (value) {
+              final service = ExportService();
+              if (value == 'pdf') {
+                service.exportToPdf(_classGrades, _selectedLevel ?? 'Classe', _classAverage);
+              } else if (value == 'excel') {
+                service.exportToExcel(_classGrades, _selectedLevel ?? 'Classe', _classAverage);
+              }
+            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: 'pdf',
+                child: Row(
+                  children: [
+                    Icon(Icons.picture_as_pdf, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Exporter en PDF'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'excel',
+                child: Row(
+                  children: [
+                    Icon(Icons.table_view, color: Colors.green),
+                    SizedBox(width: 8),
+                    Text('Exporter en Excel'),
+                  ],
+                ),
+              ),
+            ],
+          ),
           IconButton(
             onPressed: () {},
             icon: const Icon(Icons.menu, color: Colors.white),
