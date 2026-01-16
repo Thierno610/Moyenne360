@@ -96,34 +96,35 @@ class _FileUploadPageState extends State<FileUploadPage> {
   void _editStudent(int index) {
     final student = _previewStudents[index];
     final nameController = TextEditingController(text: student.name);
+    final theme = Theme.of(context);
     
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        title: Text('Modifier étudiant', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white)),
+        backgroundColor: theme.cardTheme.color,
+        title: Text('Modifier étudiant', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: theme.textTheme.bodyLarge?.color)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TextField(
               controller: nameController,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: theme.textTheme.bodyLarge?.color),
               decoration: InputDecoration(
                 labelText: 'Nom complet',
-                labelStyle: const TextStyle(color: Colors.grey),
-                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.3))),
+                labelStyle: TextStyle(color: theme.textTheme.bodyMedium?.color),
+                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.3))),
                 focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF10B981))),
               ),
             ),
             const SizedBox(height: 16),
-            Text('Notes: ${student.grades.length} détectées', style: GoogleFonts.outfit(color: Colors.grey)),
+            Text('Notes: ${student.grades.length} détectées', style: GoogleFonts.outfit(color: theme.textTheme.bodySmall?.color)),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
+            child: Text('Annuler', style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5))),
           ),
           ElevatedButton(
             onPressed: () {
@@ -153,18 +154,20 @@ class _FileUploadPageState extends State<FileUploadPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(
           _isReviewing ? 'Vérification' : 'Import - ${widget.selectedLevel}',
-          style: GoogleFonts.outfit(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          style: GoogleFonts.outfit(color: theme.textTheme.bodyLarge?.color, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new, color: theme.iconTheme.color, size: 20),
           onPressed: () {
             if (_isReviewing) {
               setState(() => _isReviewing = false);
@@ -188,14 +191,11 @@ class _FileUploadPageState extends State<FileUploadPage> {
   }
 
   Widget _buildAnimatedBackground() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF0F172A), Color(0xFF334155)],
-        ),
-      ),
+      color: theme.scaffoldBackgroundColor, // Use theme background
       child: Stack(
         children: [
            Positioned(
@@ -203,11 +203,11 @@ class _FileUploadPageState extends State<FileUploadPage> {
              child: Container(
                width: 300, height: 300,
                decoration: BoxDecoration(
-                 color: const Color(0xFF10B981).withOpacity(0.3),
+                 color: const Color(0xFF10B981).withOpacity(isDark ? 0.2 : 0.05),
                  shape: BoxShape.circle,
                  boxShadow: [
                    BoxShadow(
-                     color: const Color(0xFF10B981).withOpacity(0.3),
+                     color: const Color(0xFF10B981).withOpacity(isDark ? 0.3 : 0.1),
                      blurRadius: 100,
                      spreadRadius: 20,
                    ),
@@ -220,11 +220,11 @@ class _FileUploadPageState extends State<FileUploadPage> {
              child: Container(
                width: 250, height: 250,
                decoration: BoxDecoration(
-                 color: Colors.blueAccent.withOpacity(0.2),
+                 color: (isDark ? Colors.blueAccent : Colors.lightBlue).withOpacity(isDark ? 0.15 : 0.05),
                  shape: BoxShape.circle,
                  boxShadow: [
                    BoxShadow(
-                     color: Colors.blueAccent.withOpacity(0.2),
+                     color: (isDark ? Colors.blueAccent : Colors.lightBlue).withOpacity(isDark ? 0.2 : 0.1),
                      blurRadius: 100,
                      spreadRadius: 20,
                    ),
@@ -238,6 +238,9 @@ class _FileUploadPageState extends State<FileUploadPage> {
   }
 
   Widget _buildUploadUI() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -246,11 +249,11 @@ class _FileUploadPageState extends State<FileUploadPage> {
             Container(
               padding: const EdgeInsets.all(40),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
+                color: theme.cardTheme.color,
                 borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                border: isDark ? Border.all(color: Colors.white.withOpacity(0.05)) : null,
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20),
+                  BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 10)),
                 ],
               ),
               child: Column(
@@ -260,7 +263,7 @@ class _FileUploadPageState extends State<FileUploadPage> {
                      width: 120,
                      decoration: BoxDecoration(
                        shape: BoxShape.circle,
-                       color: Colors.white.withOpacity(0.05),
+                       color: const Color(0xFF10B981).withOpacity(0.1),
                        border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3), width: 2),
                      ),
                      child: const Center(
@@ -272,12 +275,12 @@ class _FileUploadPageState extends State<FileUploadPage> {
                    const SizedBox(height: 32),
                    Text(
                      'Importer votre fichier',
-                     style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                     style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: theme.textTheme.bodyLarge?.color),
                    ),
                    const SizedBox(height: 12),
                    Text(
                      'Formats supportés: .CSV, .Excel',
-                     style: GoogleFonts.outfit(color: Colors.white.withOpacity(0.5)),
+                     style: GoogleFonts.outfit(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6)),
                    ),
                    const SizedBox(height: 48),
                    if (_isLoading)
@@ -315,6 +318,9 @@ class _FileUploadPageState extends State<FileUploadPage> {
   }
 
   Widget _buildReviewUI() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Column(
       children: [
         Container(
@@ -322,13 +328,14 @@ class _FileUploadPageState extends State<FileUploadPage> {
           margin: const EdgeInsets.all(16),
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
+            color: theme.cardTheme.color,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+            border: isDark ? Border.all(color: Colors.white.withOpacity(0.05)) : null,
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
           ),
           child: Column(
             children: [
-              Text('Vérifiez les données', style: GoogleFonts.outfit(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('Vérifiez les données', style: GoogleFonts.outfit(color: theme.textTheme.bodyLarge?.color, fontSize: 18, fontWeight: FontWeight.bold)),
               Text('${_previewStudents.length} élèves trouvés', style: GoogleFonts.outfit(color: const Color(0xFF10B981), fontWeight: FontWeight.bold)),
             ],
           ),
@@ -342,16 +349,17 @@ class _FileUploadPageState extends State<FileUploadPage> {
               final student = _previewStudents[index];
               return Container(
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.03),
+                  color: theme.cardTheme.color,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white.withOpacity(0.05)),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4)],
+                  border: isDark ? Border.all(color: Colors.white.withOpacity(0.05)) : null,
                 ),
                 child: ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: const Color(0xFF10B981).withOpacity(0.2),
-                    child: Text(student.name.isNotEmpty ? student.name[0] : '?', style: const TextStyle(color: Color(0xFF10B981))),
+                    backgroundColor: const Color(0xFF10B981).withOpacity(0.1),
+                    child: Text(student.name.isNotEmpty ? student.name[0] : '?', style: GoogleFonts.outfit(color: const Color(0xFF10B981), fontWeight: FontWeight.bold)),
                   ),
-                  title: Text(student.name, style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
+                  title: Text(student.name, style: GoogleFonts.outfit(color: theme.textTheme.bodyLarge?.color, fontWeight: FontWeight.bold)),
                   subtitle: Text(
                     'Moy: ${student.average?.toStringAsFixed(2) ?? "--"}',
                     style: TextStyle(color: (student.average ?? 0) >= 10 ? const Color(0xFF10B981) : Colors.redAccent),
@@ -359,8 +367,8 @@ class _FileUploadPageState extends State<FileUploadPage> {
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      IconButton(icon: const Icon(Icons.edit, color: Colors.blueAccent), onPressed: () => _editStudent(index)),
-                      IconButton(icon: const Icon(Icons.delete, color: Colors.redAccent), onPressed: () => _deleteStudent(index)),
+                      IconButton(icon: Icon(Icons.edit, color: Colors.blueAccent.withOpacity(0.8), size: 20), onPressed: () => _editStudent(index)),
+                      IconButton(icon: Icon(Icons.delete, color: Colors.redAccent.withOpacity(0.8), size: 20), onPressed: () => _deleteStudent(index)),
                     ],
                   ),
                 ),
@@ -373,11 +381,13 @@ class _FileUploadPageState extends State<FileUploadPage> {
   }
 
   Widget _buildBottomBar() {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
-        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
+        color: theme.brightness == Brightness.dark ? const Color(0xFF0F172A) : Colors.white,
+        border: Border(top: BorderSide(color: theme.dividerColor.withOpacity(0.1))),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -4))],
       ),
       child: SafeArea(
         child: ElevatedButton(
@@ -386,6 +396,8 @@ class _FileUploadPageState extends State<FileUploadPage> {
             backgroundColor: const Color(0xFF10B981),
             padding: const EdgeInsets.symmetric(vertical: 16),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            elevation: 4,
+            shadowColor: const Color(0xFF10B981).withOpacity(0.4),
           ),
           child: Text('VALIDER ET IMPORTER', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
         ),
