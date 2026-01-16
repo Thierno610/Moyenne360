@@ -1,7 +1,8 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'dart:io';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:moyenne_auto/pages/profile_edit_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -13,7 +14,17 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   bool _notificationsEnabled = true;
   bool _darkMode = false;
-  bool _biometricEnabled = false;
+  bool _biometricsEnabled = false;
+
+  // Mock User Data
+  Map<String, String> _userData = {
+    'name': 'Utilisateur Premium',
+    'email': 'utilisateur@ecole.com',
+    'phone': '+224 620 00 00 00',
+    'role': 'Enseignant',
+    'level': 'Lycée',
+    'bio': 'Enseignant passionné par la technologie.',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -118,33 +129,61 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildProfileCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: _cardDecoration,
-      child: Row(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: const Color(0xFF10B981).withOpacity(0.1),
-              shape: BoxShape.circle,
+    return InkWell(
+      onTap: () async {
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => ProfileEditPage(currentData: _userData)),
+        );
+
+        if (result != null && result is Map<String, String>) {
+          setState(() {
+            _userData = result;
+          });
+        }
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: _cardDecoration,
+        child: Row(
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withOpacity(0.1),
+                shape: BoxShape.circle,
+                image: _userData['imagePath'] != null && _userData['imagePath']!.isNotEmpty
+                  ? DecorationImage(
+                      image: FileImage(File(_userData['imagePath']!)),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+              ),
+              child: _userData['imagePath'] != null && _userData['imagePath']!.isNotEmpty 
+                ? null 
+                : Center(
+                 child: Text(
+                    _userData['name']!.substring(0, 1).toUpperCase(),
+                    style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF10B981)),
+                 ),
+              ),
             ),
-            child: const Icon(Icons.person, color: Color(0xFF10B981), size: 30),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Utilisateur Premium', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text('Modifier le profil', style: GoogleFonts.outfit(color: const Color(0xFF10B981), fontSize: 13, fontWeight: FontWeight.bold)),
-              ],
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_userData['name']!, style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text('Modifier le profil', style: GoogleFonts.outfit(color: const Color(0xFF10B981), fontSize: 13, fontWeight: FontWeight.bold)),
+                ],
+              ),
             ),
-          ),
-          const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 16),
-        ],
+            const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 16),
+          ],
+        ),
       ),
     );
   }

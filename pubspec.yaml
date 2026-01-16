@@ -23,6 +23,7 @@ dependencies:
   printing: ^5.13.3
   excel: ^4.0.4
   open_filex: ^4.5.2
+  local_auth: ^2.3.0
 
 dev_dependencies:
   flutter_test:

@@ -15,6 +15,7 @@ import 'package:moyenne_auto/models/student_grade.dart';
 import 'package:moyenne_auto/services/grade_service.dart';
 import 'package:moyenne_auto/pages/manual_entry_page.dart';
 import 'package:moyenne_auto/pages/file_upload_page.dart';
+import 'package:moyenne_auto/services/auth_service.dart';
 import 'package:moyenne_auto/services/export_service.dart';
 import 'package:moyenne_auto/pages/settings_page.dart';
 
@@ -138,6 +139,36 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLogin = true;
   String _selectedRole = 'Enseignant';
   String _selectedTeachingLevel = 'Primaire';
+
+  final _authService = AuthService();
+  bool _isBioAvailable = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBiometrics();
+  }
+
+  Future<void> _checkBiometrics() async {
+    final available = await _authService.isBiometricAvailable();
+    setState(() => _isBioAvailable = available);
+  }
+
+  Future<void> _handleBiometricLogin() async {
+    final authenticated = await _authService.authenticate();
+    if (authenticated) {
+      if (mounted) {
+         // Assuming a default role and level for biometric login if not stored
+         widget.onLogin('biometric@user.com', 'Enseignant', 'Primaire');
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Authentification biométrique échouée')),
+        );
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -438,6 +469,41 @@ class _LoginPageState extends State<LoginPage> {
                                     style: TextStyle(color: Color(0xFF0F172A)),
                                   ),
                                 ).animate().fadeIn(delay: 800.ms),
+
+                              if (_isBioAvailable) ...[
+                                const SizedBox(height: 24),
+                                Row(
+                                  children: [
+                                    Expanded(child: Divider(color: Colors.grey.withOpacity(0.3))),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                                      child: Text(
+                                        'OU',
+                                        style: TextStyle(color: Colors.grey.withOpacity(0.5), fontSize: 12),
+                                      ),
+                                    ),
+                                    Expanded(child: Divider(color: Colors.grey.withOpacity(0.3))),
+                                  ],
+                                ),
+                                const SizedBox(height: 24),
+                                IconButton(
+                                  onPressed: _handleBiometricLogin,
+                                  icon: const Icon(Icons.fingerprint, color: Color(0xFF10B981), size: 42),
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: const Color(0xFF10B981).withOpacity(0.1),
+                                    padding: const EdgeInsets.all(16),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                      side: BorderSide(color: const Color(0xFF10B981).withOpacity(0.2)),
+                                    )
+                                  ),
+                                ).animate().scale(delay: 500.ms),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Connexion biométrique',
+                                  style: GoogleFonts.outfit(color: Colors.grey.withOpacity(0.7), fontSize: 12),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -971,38 +1037,38 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
             ),
           ),
           const Spacer(),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.download, color: Colors.white),
-            onSelected: (value) {
-              final service = ExportService();
-              if (value == 'pdf') {
-                service.exportToPdf(_classGrades, _selectedLevel ?? 'Classe', _classAverage);
-              } else if (value == 'excel') {
-                service.exportToExcel(_classGrades, _selectedLevel ?? 'Classe', _classAverage);
-              }
-            },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              const PopupMenuItem<String>(
-                value: 'pdf',
+          Container(
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withOpacity(0.3)),
+            ),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () {
+                _showExportOptions(context);
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    Icon(Icons.picture_as_pdf, color: Colors.red),
-                    SizedBox(width: 8),
-                    Text('Exporter en PDF'),
+                    const Icon(Icons.file_download_outlined, color: Colors.white, size: 20),
+                    if (MediaQuery.of(context).size.width > 600) ...[
+                      const SizedBox(width: 8),
+                      Text(
+                        'Exporter',
+                        style: GoogleFonts.outfit(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
-              const PopupMenuItem<String>(
-                value: 'excel',
-                child: Row(
-                  children: [
-                    Icon(Icons.table_view, color: Colors.green),
-                    SizedBox(width: 8),
-                    Text('Exporter en Excel'),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
           IconButton(
             onPressed: () {},
@@ -1379,6 +1445,115 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
     );
   }
 
+  void _showExportOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text('Exporter les résultats', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text('Choisissez le format de fichier souhaité.', style: GoogleFonts.outfit(color: Colors.grey)),
+            const SizedBox(height: 32),
+            _buildExportOption(
+              context: context,
+              icon: Icons.picture_as_pdf,
+              color: Colors.red,
+              title: 'Format PDF',
+              subtitle: 'Idéal pour l\'impression et le partage',
+              onTap: () {
+                Navigator.pop(context);
+                final service = ExportService();
+                service.exportToPdf(_classGrades, _selectedLevel ?? 'Classe', _classAverage);
+              },
+            ),
+            const SizedBox(height: 16),
+             _buildExportOption(
+              context: context,
+              icon: Icons.table_view,
+              color: const Color(0xFF10B981),
+              title: 'Format Excel',
+              subtitle: 'Idéal pour le traitement de données',
+              onTap: () {
+                Navigator.pop(context);
+                final service = ExportService();
+                service.exportToExcel(_classGrades, _selectedLevel ?? 'Classe', _classAverage);
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExportOption({
+    required BuildContext context,
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.1)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                   BoxShadow(color: color.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4))
+                ]
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text(subtitle, style: GoogleFonts.outfit(color: Colors.grey, fontSize: 13)),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios, size: 16, color: color.withOpacity(0.5)),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildStudentsTable() {
     // 1. Filtering Logic
     List<StudentGrade> filteredList = _classGrades.where((s) {
@@ -1708,9 +1883,44 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
                     Text(
                       'Bienvenue, ${widget.userName}',
                       style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 8),
+                    
+                    if (_isBioAvailable) ...[
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Expanded(child: Divider(color: Colors.white.withOpacity(0.3))),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              'OU',
+                              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                            ),
+                          ),
+                          Expanded(child: Divider(color: Colors.white.withOpacity(0.3))),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      IconButton(
+                        onPressed: _handleBiometricLogin,
+                        icon: const Icon(Icons.fingerprint, color: Colors.white, size: 42),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white.withOpacity(0.1),
+                          padding: const EdgeInsets.all(16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            side: BorderSide(color: Colors.white.withOpacity(0.2)),
+                          )
+                        ),
+                      ).animate().scale(delay: 500.ms),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Connexion biométrique',
+                        style: GoogleFonts.outfit(color: Colors.white.withOpacity(0.7), fontSize: 12),
+                      ),
+                    ],
+
+                    const SizedBox(height: 24),
                     Text(
                       'Sélectionnez votre espace de travail',
                       style: GoogleFonts.outfit(color: Colors.white.withOpacity(0.9), fontSize: 16),
