@@ -1188,19 +1188,24 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
 
     double successRate = (passCount / _classGrades.length) * 100;
 
-    return GridView.count(
-      crossAxisCount: 4,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 16,
-      mainAxisSpacing: 16,
-      childAspectRatio: 1.8,
-      children: [
-        _buildStatCard('Moyenne', _classAverage?.toStringAsFixed(2) ?? '--', Icons.show_chart, const Color(0xFF10B981)),
-        _buildStatCard('Réussite', '${successRate.toStringAsFixed(0)}%', Icons.check_circle_outline, Colors.blue),
-        _buildStatCard('Max', max.toStringAsFixed(2), Icons.arrow_upward, Colors.green),
-        _buildStatCard('Min', min.toStringAsFixed(2), Icons.arrow_downward, Colors.red),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 600;
+        return GridView.count(
+          crossAxisCount: isMobile ? 2 : 4,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          childAspectRatio: isMobile ? 1.4 : 1.8,
+          children: [
+            _buildStatCard('Moyenne', _classAverage?.toStringAsFixed(2) ?? '--', Icons.show_chart, const Color(0xFF10B981)),
+            _buildStatCard('Réussite', '${successRate.toStringAsFixed(0)}%', Icons.check_circle_outline, Colors.blue),
+            _buildStatCard('Max', max.toStringAsFixed(2), Icons.arrow_upward, Colors.green),
+            _buildStatCard('Min', min.toStringAsFixed(2), Icons.arrow_downward, Colors.red),
+          ],
+        );
+      },
     );
   }
 
