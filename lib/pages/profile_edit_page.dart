@@ -110,11 +110,11 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                       width: 100,
                       height: 100,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF10B981).withOpacity(0.1),
+                        color: const Color(0xFF10B981).withValues(alpha:0.1),
                         shape: BoxShape.circle,
                         border: Border.all(color: theme.cardTheme.color ?? Colors.white, width: 4),
                         boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))
+                          BoxShadow(color: Colors.black.withValues(alpha:0.1), blurRadius: 10, offset: const Offset(0, 4))
                         ],
                         image: _imagePath != null && _imagePath!.isNotEmpty
                           ? DecorationImage(
@@ -197,7 +197,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
         style: GoogleFonts.outfit(
           fontSize: 13,
           fontWeight: FontWeight.bold,
-          color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
+          color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha:0.7),
           letterSpacing: 1.2,
         ),
       ),
@@ -215,7 +215,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: GoogleFonts.outfit(fontSize: 12, color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7), fontWeight: FontWeight.bold)),
+        Text(label, style: GoogleFonts.outfit(fontSize: 12, color: theme.textTheme.bodyMedium?.color?.withValues(alpha:0.7), fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
@@ -224,13 +224,13 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
           style: GoogleFonts.outfit(
             fontSize: 15, 
             fontWeight: FontWeight.w500, 
-            color: readOnly ? theme.textTheme.bodyLarge?.color?.withOpacity(0.5) : theme.textTheme.bodyLarge?.color
+            color: readOnly ? theme.textTheme.bodyLarge?.color?.withValues(alpha:0.5) : theme.textTheme.bodyLarge?.color
           ),
           decoration: InputDecoration(
             isDense: true,
             hintText: 'Entrez $label',
-            hintStyle: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.4)),
-            prefixIcon: Icon(icon, size: 20, color: theme.iconTheme.color?.withOpacity(0.5)),
+            hintStyle: TextStyle(color: theme.textTheme.bodyMedium?.color?.withValues(alpha:0.4)),
+            prefixIcon: Icon(icon, size: 20, color: theme.iconTheme.color?.withValues(alpha:0.5)),
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(vertical: 8),
           ),
@@ -242,7 +242,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   Widget _buildDivider() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Divider(height: 1, color: Theme.of(context).dividerColor.withOpacity(0.1)),
+      child: Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha:0.1)),
     );
   }
 
@@ -251,7 +251,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     borderRadius: BorderRadius.circular(16),
     boxShadow: [
       BoxShadow(
-        color: Colors.black.withOpacity(0.03),
+        color: Colors.black.withValues(alpha:0.03),
         blurRadius: 10,
         offset: const Offset(0, 4),
       ),

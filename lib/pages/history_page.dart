@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:intl/intl.dart';
+
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -81,7 +81,7 @@ class _HistoryPageState extends State<HistoryPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                   Icon(Icons.history_toggle_off, size: 60, color: Colors.grey.withOpacity(0.3)),
+                   Icon(Icons.history_toggle_off, size: 60, color: Colors.grey.withValues(alpha:0.3)),
                    const SizedBox(height: 16),
                    Text('Aucun historique', style: GoogleFonts.outfit(color: Colors.grey)),
                 ],
@@ -111,27 +111,27 @@ class _HistoryPageState extends State<HistoryPage> {
       case 'import':
         iconColor = Colors.blue;
         iconData = Icons.file_upload_outlined;
-        bgColor = Colors.blue.withOpacity(0.1);
+        bgColor = Colors.blue.withValues(alpha:0.1);
         break;
       case 'export':
         iconColor = Colors.orange;
         iconData = Icons.file_download_outlined;
-        bgColor = Colors.orange.withOpacity(0.1);
+        bgColor = Colors.orange.withValues(alpha:0.1);
         break;
       case 'edit':
         iconColor = const Color(0xFF10B981);
         iconData = Icons.edit_outlined;
-        bgColor = const Color(0xFF10B981).withOpacity(0.1);
+        bgColor = const Color(0xFF10B981).withValues(alpha:0.1);
         break;
       case 'add':
         iconColor = Colors.purple;
         iconData = Icons.add_circle_outline;
-        bgColor = Colors.purple.withOpacity(0.1);
+        bgColor = Colors.purple.withValues(alpha:0.1);
         break;
       default:
         iconColor = Colors.grey;
         iconData = Icons.info_outline;
-        bgColor = Colors.grey.withOpacity(0.1);
+        bgColor = Colors.grey.withValues(alpha:0.1);
     }
 
     return Row(
@@ -152,7 +152,7 @@ class _HistoryPageState extends State<HistoryPage> {
                 width: 2,
                 height: 40,
                 margin: const EdgeInsets.only(top: 8),
-                color: theme.dividerColor.withOpacity(0.1),
+                color: theme.dividerColor.withValues(alpha:0.1),
               ),
           ],
         ),
@@ -165,12 +165,12 @@ class _HistoryPageState extends State<HistoryPage> {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
+                  color: Colors.black.withValues(alpha:0.03),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
               ],
-              border: isDark ? Border.all(color: Colors.white.withOpacity(0.05)) : null,
+              border: isDark ? Border.all(color: Colors.white.withValues(alpha:0.05)) : null,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -189,7 +189,7 @@ class _HistoryPageState extends State<HistoryPage> {
                     Text(
                       item['date'],
                       style: GoogleFonts.outfit(
-                        color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
+                        color: theme.textTheme.bodyMedium?.color?.withValues(alpha:0.5),
                         fontSize: 12,
                       ),
                     ),
@@ -199,7 +199,7 @@ class _HistoryPageState extends State<HistoryPage> {
                 Text(
                   item['description'],
                   style: GoogleFonts.outfit(
-                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                    color: theme.textTheme.bodyMedium?.color?.withValues(alpha:0.7),
                     fontSize: 13,
                   ),
                 ),

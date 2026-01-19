@@ -1,7 +1,11 @@
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:moyenne_auto/pages/profile_edit_page.dart'; // Ensure this is imported if used
 import 'package:moyenne_auto/services/theme_service.dart';
-import 'package:moyenne_auto/pages/contact_page.dart';
-import 'package:moyenne_auto/pages/about_page.dart';
-import 'package:moyenne_auto/pages/faq_page.dart';
+import 'package:moyenne_auto/services/auth_service.dart';
+
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -13,6 +17,18 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   bool _notificationsEnabled = true;
   bool _biometricEnabled = false;
+  final _authService = AuthService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBiometricPreference();
+  }
+
+  Future<void> _loadBiometricPreference() async {
+    final enabled = await _authService.getBiometricEnabled();
+    setState(() => _biometricEnabled = enabled);
+  }
 
   // Mock User Data
   Map<String, String> _userData = {
@@ -83,7 +99,10 @@ class _SettingsPageState extends State<SettingsPage> {
                     title: 'Biométrie',
                     subtitle: 'Connexion rapide',
                     value: _biometricEnabled,
-                    onChanged: (v) => setState(() => _biometricEnabled = v),
+                    onChanged: (v) async {
+                       setState(() => _biometricEnabled = v);
+                       await _authService.setBiometricEnabled(v);
+                    },
                   ),
                 ],
               ),
@@ -156,7 +175,7 @@ class _SettingsPageState extends State<SettingsPage> {
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withOpacity(0.1),
+                color: const Color(0xFF10B981).withValues(alpha:0.1),
                 shape: BoxShape.circle,
                 image: _userData['imagePath'] != null && _userData['imagePath']!.isNotEmpty
                   ? DecorationImage(
@@ -185,7 +204,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ],
               ),
             ),
-            Icon(Icons.arrow_forward_ios, color: Theme.of(context).iconTheme.color?.withOpacity(0.3), size: 16),
+            Icon(Icons.arrow_forward_ios, color: Theme.of(context).iconTheme.color?.withValues(alpha:0.3), size: 16),
           ],
         ),
       ),
@@ -204,14 +223,14 @@ class _SettingsPageState extends State<SettingsPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          Icon(icon, color: theme.iconTheme.color?.withOpacity(0.7), size: 22),
+          Icon(icon, color: theme.iconTheme.color?.withValues(alpha:0.7), size: 22),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w500, color: theme.textTheme.bodyLarge?.color)),
-                Text(subtitle, style: GoogleFonts.outfit(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6), fontSize: 12)),
+                Text(subtitle, style: GoogleFonts.outfit(color: theme.textTheme.bodyMedium?.color?.withValues(alpha:0.6), fontSize: 12)),
               ],
             ),
           ),
@@ -233,10 +252,10 @@ class _SettingsPageState extends State<SettingsPage> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         child: Row(
           children: [
-            Icon(icon, color: theme.iconTheme.color?.withOpacity(0.7), size: 22),
+            Icon(icon, color: theme.iconTheme.color?.withValues(alpha:0.7), size: 22),
             const SizedBox(width: 16),
             Expanded(child: Text(title, style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w500, color: theme.textTheme.bodyLarge?.color))),
-            Icon(Icons.arrow_forward_ios, color: theme.iconTheme.color?.withOpacity(0.3), size: 14),
+            Icon(Icons.arrow_forward_ios, color: theme.iconTheme.color?.withValues(alpha:0.3), size: 14),
           ],
         ),
       ),
@@ -244,7 +263,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildDivider() {
-    return Divider(height: 1, color: Theme.of(context).dividerColor.withOpacity(0.1));
+    return Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha:0.1));
   }
 
   BoxDecoration get _cardDecoration => BoxDecoration(
@@ -252,7 +271,7 @@ class _SettingsPageState extends State<SettingsPage> {
     borderRadius: BorderRadius.circular(16),
     boxShadow: [
       BoxShadow(
-        color: Colors.black.withOpacity(0.03),
+        color: Colors.black.withValues(alpha:0.03),
         blurRadius: 10,
         offset: const Offset(0, 4),
       ),

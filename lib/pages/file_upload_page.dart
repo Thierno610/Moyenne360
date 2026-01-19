@@ -113,7 +113,7 @@ class _FileUploadPageState extends State<FileUploadPage> {
               decoration: InputDecoration(
                 labelText: 'Nom complet',
                 labelStyle: TextStyle(color: theme.textTheme.bodyMedium?.color),
-                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.3))),
+                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: theme.dividerColor.withValues(alpha:0.3))),
                 focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF10B981))),
               ),
             ),
@@ -124,7 +124,7 @@ class _FileUploadPageState extends State<FileUploadPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Annuler', style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5))),
+            child: Text('Annuler', style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withValues(alpha:0.5))),
           ),
           ElevatedButton(
             onPressed: () {
@@ -203,11 +203,11 @@ class _FileUploadPageState extends State<FileUploadPage> {
              child: Container(
                width: 300, height: 300,
                decoration: BoxDecoration(
-                 color: const Color(0xFF10B981).withOpacity(isDark ? 0.2 : 0.05),
+                 color: const Color(0xFF10B981).withValues(alpha:isDark ? 0.2 : 0.05),
                  shape: BoxShape.circle,
                  boxShadow: [
                    BoxShadow(
-                     color: const Color(0xFF10B981).withOpacity(isDark ? 0.3 : 0.1),
+                     color: const Color(0xFF10B981).withValues(alpha:isDark ? 0.3 : 0.1),
                      blurRadius: 100,
                      spreadRadius: 20,
                    ),
@@ -220,11 +220,11 @@ class _FileUploadPageState extends State<FileUploadPage> {
              child: Container(
                width: 250, height: 250,
                decoration: BoxDecoration(
-                 color: (isDark ? Colors.blueAccent : Colors.lightBlue).withOpacity(isDark ? 0.15 : 0.05),
+                 color: (isDark ? Colors.blueAccent : Colors.lightBlue).withValues(alpha:isDark ? 0.15 : 0.05),
                  shape: BoxShape.circle,
                  boxShadow: [
                    BoxShadow(
-                     color: (isDark ? Colors.blueAccent : Colors.lightBlue).withOpacity(isDark ? 0.2 : 0.1),
+                     color: (isDark ? Colors.blueAccent : Colors.lightBlue).withValues(alpha:isDark ? 0.2 : 0.1),
                      blurRadius: 100,
                      spreadRadius: 20,
                    ),
@@ -251,9 +251,9 @@ class _FileUploadPageState extends State<FileUploadPage> {
               decoration: BoxDecoration(
                 color: theme.cardTheme.color,
                 borderRadius: BorderRadius.circular(32),
-                border: isDark ? Border.all(color: Colors.white.withOpacity(0.05)) : null,
+                border: isDark ? Border.all(color: Colors.white.withValues(alpha:0.05)) : null,
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 10)),
+                  BoxShadow(color: Colors.black.withValues(alpha:0.05), blurRadius: 20, offset: const Offset(0, 10)),
                 ],
               ),
               child: Column(
@@ -263,8 +263,8 @@ class _FileUploadPageState extends State<FileUploadPage> {
                      width: 120,
                      decoration: BoxDecoration(
                        shape: BoxShape.circle,
-                       color: const Color(0xFF10B981).withOpacity(0.1),
-                       border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3), width: 2),
+                       color: const Color(0xFF10B981).withValues(alpha:0.1),
+                       border: Border.all(color: const Color(0xFF10B981).withValues(alpha:0.3), width: 2),
                      ),
                      child: const Center(
                        child: Icon(Icons.cloud_upload_rounded, size: 50, color: Color(0xFF10B981)),
@@ -280,7 +280,7 @@ class _FileUploadPageState extends State<FileUploadPage> {
                    const SizedBox(height: 12),
                    Text(
                      'Formats supportés: .CSV, .Excel',
-                     style: GoogleFonts.outfit(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6)),
+                     style: GoogleFonts.outfit(color: theme.textTheme.bodyMedium?.color?.withValues(alpha:0.6)),
                    ),
                    const SizedBox(height: 48),
                    if (_isLoading)
@@ -295,7 +295,7 @@ class _FileUploadPageState extends State<FileUploadPage> {
                            gradient: const LinearGradient(colors: [Color(0xFF10B981), Color(0xFF059669)]),
                            borderRadius: BorderRadius.circular(16),
                            boxShadow: [
-                             BoxShadow(color: const Color(0xFF10B981).withOpacity(0.4), blurRadius: 20, offset: const Offset(0, 4))
+                             BoxShadow(color: const Color(0xFF10B981).withValues(alpha:0.4), blurRadius: 20, offset: const Offset(0, 4))
                            ],
                          ),
                          child: Row(
@@ -330,8 +330,8 @@ class _FileUploadPageState extends State<FileUploadPage> {
           decoration: BoxDecoration(
             color: theme.cardTheme.color,
             borderRadius: BorderRadius.circular(20),
-            border: isDark ? Border.all(color: Colors.white.withOpacity(0.05)) : null,
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+            border: isDark ? Border.all(color: Colors.white.withValues(alpha:0.05)) : null,
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha:0.05), blurRadius: 10)],
           ),
           child: Column(
             children: [
@@ -351,12 +351,12 @@ class _FileUploadPageState extends State<FileUploadPage> {
                 decoration: BoxDecoration(
                   color: theme.cardTheme.color,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4)],
-                  border: isDark ? Border.all(color: Colors.white.withOpacity(0.05)) : null,
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha:0.02), blurRadius: 4)],
+                  border: isDark ? Border.all(color: Colors.white.withValues(alpha:0.05)) : null,
                 ),
                 child: ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: const Color(0xFF10B981).withOpacity(0.1),
+                    backgroundColor: const Color(0xFF10B981).withValues(alpha:0.1),
                     child: Text(student.name.isNotEmpty ? student.name[0] : '?', style: GoogleFonts.outfit(color: const Color(0xFF10B981), fontWeight: FontWeight.bold)),
                   ),
                   title: Text(student.name, style: GoogleFonts.outfit(color: theme.textTheme.bodyLarge?.color, fontWeight: FontWeight.bold)),
@@ -367,8 +367,8 @@ class _FileUploadPageState extends State<FileUploadPage> {
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      IconButton(icon: Icon(Icons.edit, color: Colors.blueAccent.withOpacity(0.8), size: 20), onPressed: () => _editStudent(index)),
-                      IconButton(icon: Icon(Icons.delete, color: Colors.redAccent.withOpacity(0.8), size: 20), onPressed: () => _deleteStudent(index)),
+                      IconButton(icon: Icon(Icons.edit, color: Colors.blueAccent.withValues(alpha:0.8), size: 20), onPressed: () => _editStudent(index)),
+                      IconButton(icon: Icon(Icons.delete, color: Colors.redAccent.withValues(alpha:0.8), size: 20), onPressed: () => _deleteStudent(index)),
                     ],
                   ),
                 ),
@@ -386,8 +386,8 @@ class _FileUploadPageState extends State<FileUploadPage> {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: theme.brightness == Brightness.dark ? const Color(0xFF0F172A) : Colors.white,
-        border: Border(top: BorderSide(color: theme.dividerColor.withOpacity(0.1))),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -4))],
+        border: Border(top: BorderSide(color: theme.dividerColor.withValues(alpha:0.1))),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha:0.05), blurRadius: 10, offset: const Offset(0, -4))],
       ),
       child: SafeArea(
         child: ElevatedButton(
@@ -397,7 +397,7 @@ class _FileUploadPageState extends State<FileUploadPage> {
             padding: const EdgeInsets.symmetric(vertical: 16),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             elevation: 4,
-            shadowColor: const Color(0xFF10B981).withOpacity(0.4),
+            shadowColor: const Color(0xFF10B981).withValues(alpha:0.4),
           ),
           child: Text('VALIDER ET IMPORTER', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
         ),

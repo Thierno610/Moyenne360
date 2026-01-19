@@ -18,16 +18,17 @@ import 'package:moyenne_auto/pages/file_upload_page.dart';
 import 'package:moyenne_auto/services/auth_service.dart';
 import 'package:moyenne_auto/services/export_service.dart';
 import 'package:moyenne_auto/services/database_service.dart';
-import 'package:moyenne_auto/services/database_service.dart';
 import 'package:moyenne_auto/pages/settings_page.dart';
 import 'package:moyenne_auto/pages/history_page.dart';
 import 'package:moyenne_auto/pages/coming_soon_page.dart';
+import 'package:moyenne_auto/pages/splash_page.dart'; // Import Splash
 
 import 'package:moyenne_auto/services/theme_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await themeService.loadTheme();
+  // Theme loaded in Splash, but good to ensure basic init
+  // await themeService.loadTheme(); 
   
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -56,7 +57,7 @@ class MoyenneApp extends StatelessWidget {
         seedColor: primaryColor,
         brightness: Brightness.light,
         surface: Colors.white,
-        background: const Color(0xFFF8FAFC), // Slate 50
+
       ),
       scaffoldBackgroundColor: const Color(0xFFF8FAFC),
       textTheme: GoogleFonts.outfitTextTheme(ThemeData.light().textTheme),
@@ -72,7 +73,7 @@ class MoyenneApp extends StatelessWidget {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: Colors.grey.withOpacity(0.12)),
+          side: BorderSide(color: Colors.grey.withValues(alpha:0.12)),
         ),
       ),
     );
@@ -85,7 +86,7 @@ class MoyenneApp extends StatelessWidget {
         seedColor: primaryColor,
         brightness: Brightness.dark,
         surface: const Color(0xFF1E293B), // Slate 800
-        background: const Color(0xFF0F172A), // Slate 900
+
       ),
       scaffoldBackgroundColor: const Color(0xFF0F172A),
       textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme),
@@ -101,7 +102,7 @@ class MoyenneApp extends StatelessWidget {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: Colors.white.withOpacity(0.05)),
+          side: BorderSide(color: Colors.white.withValues(alpha:0.05)),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -124,7 +125,8 @@ class MoyenneApp extends StatelessWidget {
           theme: lightTheme,
           darkTheme: darkTheme,
           themeMode: themeService.themeMode,
-          home: const EntryShell(),
+          // Start with SplashPage
+          home: const SplashPage(), 
         );
       },
     );
@@ -207,15 +209,25 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _checkBiometrics() async {
     final available = await _authService.isBiometricAvailable();
-    setState(() => _isBioAvailable = available);
+    if (!available) {
+      setState(() => _isBioAvailable = false);
+      return;
+    }
+    // Only show if user has enabled it in settings
+    final enabled = await _authService.getBiometricEnabled();
+    setState(() => _isBioAvailable = enabled);
   }
 
   Future<void> _handleBiometricLogin() async {
     final authenticated = await _authService.authenticate();
     if (authenticated) {
-      if (mounted) {
-         // Assuming a default role and level for biometric login if not stored
-         widget.onLogin('biometric@user.com', 'Enseignant', 'Primaire');
+      final credentials = await _authService.getUserCredentials();
+      if (credentials != null && mounted) {
+         widget.onLogin(credentials['email']!, credentials['role']!, credentials['level']!);
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Aucun identifiant sauvegardé. Veuillez vous connecter manuellement.')),
+        );
       }
     } else {
       if (mounted) {
@@ -237,6 +249,10 @@ class _LoginPageState extends State<LoginPage> {
 
   void _submit() {
     if (_formKey.currentState?.validate() != true) return;
+    
+    // Save credentials for future biometric login
+    _authService.saveUserCredentials(_email.text.trim(), _selectedRole, _selectedTeachingLevel);
+
     // Pass selected role and level (only relevant if role is teacher)
     widget.onLogin(_email.text.trim(), _selectedRole, _selectedTeachingLevel);
   }
@@ -270,12 +286,12 @@ class _LoginPageState extends State<LoginPage> {
                               width: 420, // Check explicit width for scaling
                               padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.9),
+                      color: Theme.of(context).cardTheme.color?.withValues(alpha:0.9) ?? Colors.white.withValues(alpha:0.9),
                       borderRadius: BorderRadius.circular(32),
-                      border: Border.all(color: Colors.grey.withOpacity(0.12)),
+                      border: Border.all(color: Colors.grey.withValues(alpha:0.12)),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.06),
+                          color: Colors.black.withValues(alpha:0.06),
                           blurRadius: 30,
                           offset: const Offset(0, 8),
                         ),
@@ -296,7 +312,7 @@ class _LoginPageState extends State<LoginPage> {
                                 curve: Curves.easeInOut)
                             .shimmer(
                                 duration: 2.seconds,
-                                color: Colors.white.withOpacity(0.2)),
+                                color: Colors.white.withValues(alpha:0.2)),
                         const SizedBox(height: 24),
                         Text(
                           'Moyennes Premium',
@@ -304,7 +320,7 @@ class _LoginPageState extends State<LoginPage> {
                               .textTheme
                               .headlineMedium
                               ?.copyWith(
-                                color: const Color(0xFF0F172A),
+                                color: Theme.of(context).textTheme.headlineMedium?.color,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 1.2,
                               ),
@@ -313,7 +329,7 @@ class _LoginPageState extends State<LoginPage> {
                         Text(
                           'Excellence académique',
                           style: TextStyle(
-                              color: const Color(0xFF0F172A).withOpacity(0.65),
+                              color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha:0.65),
                               fontSize: 16),
                         ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.3),
                         const SizedBox(height: 40),
@@ -349,9 +365,9 @@ class _LoginPageState extends State<LoginPage> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: Colors.grey.withOpacity(0.05),
+                                    color: Colors.grey.withValues(alpha:0.05),
                                     borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                                    border: Border.all(color: Colors.grey.withValues(alpha:0.2)),
                                   ),
                                   child: DropdownButtonHideUnderline(
                                     child: DropdownButton<String>(
@@ -359,7 +375,7 @@ class _LoginPageState extends State<LoginPage> {
                                       isExpanded: true,
                                       icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF1E293B)),
                                       style: GoogleFonts.outfit(
-                                        color: const Color(0xFF1E293B),
+                                        color: Theme.of(context).textTheme.bodyLarge?.color,
                                         fontSize: 16,
                                       ),
                                       onChanged: (String? newValue) {
@@ -392,9 +408,9 @@ class _LoginPageState extends State<LoginPage> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: Colors.grey.withOpacity(0.05),
+                                        color: Colors.grey.withValues(alpha:0.05),
                                         borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                                        border: Border.all(color: Colors.grey.withValues(alpha:0.2)),
                                       ),
                                       child: DropdownButtonHideUnderline(
                                         child: DropdownButton<String>(
@@ -402,7 +418,7 @@ class _LoginPageState extends State<LoginPage> {
                                           isExpanded: true,
                                           icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF1E293B)),
                                           style: GoogleFonts.outfit(
-                                            color: const Color(0xFF1E293B),
+                                            color: Theme.of(context).textTheme.bodyLarge?.color,
                                             fontSize: 16,
                                           ),
                                           onChanged: (String? newValue) {
@@ -480,7 +496,7 @@ class _LoginPageState extends State<LoginPage> {
                                     foregroundColor: Colors.white,
                                     elevation: 8,
                                     shadowColor:
-                                        const Color(0xFF10B981).withOpacity(0.5),
+                                        const Color(0xFF10B981).withValues(alpha:0.5),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(16),
                                     ),
@@ -509,7 +525,7 @@ class _LoginPageState extends State<LoginPage> {
                                         ? 'Pas encore de compte ?'
                                         : 'Déjà inscrit ?',
                                     style: TextStyle(
-                                        color: const Color(0xFF0F172A).withOpacity(0.6)),
+                                        color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha:0.6)),
                                   ),
                                   TextButton(
                                     onPressed: () =>
@@ -530,9 +546,9 @@ class _LoginPageState extends State<LoginPage> {
                                     _password.text = 'demo1234';
                                     _submit();
                                   },
-                                  child: const Text(
+                                  child: Text(
                                     'Mode Démo',
-                                    style: TextStyle(color: Color(0xFF0F172A)),
+                                    style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
                                   ),
                                 ).animate().fadeIn(delay: 800.ms),
 
@@ -540,15 +556,15 @@ class _LoginPageState extends State<LoginPage> {
                                 const SizedBox(height: 24),
                                 Row(
                                   children: [
-                                    Expanded(child: Divider(color: Colors.grey.withOpacity(0.3))),
+                                    Expanded(child: Divider(color: Colors.grey.withValues(alpha:0.3))),
                                     Padding(
                                       padding: const EdgeInsets.symmetric(horizontal: 16),
                                       child: Text(
                                         'OU',
-                                        style: TextStyle(color: Colors.grey.withOpacity(0.5), fontSize: 12),
+                                        style: TextStyle(color: Colors.grey.withValues(alpha:0.5), fontSize: 12),
                                       ),
                                     ),
-                                    Expanded(child: Divider(color: Colors.grey.withOpacity(0.3))),
+                                    Expanded(child: Divider(color: Colors.grey.withValues(alpha:0.3))),
                                   ],
                                 ),
                                 const SizedBox(height: 24),
@@ -556,18 +572,18 @@ class _LoginPageState extends State<LoginPage> {
                                   onPressed: _handleBiometricLogin,
                                   icon: const Icon(Icons.fingerprint, color: Color(0xFF10B981), size: 42),
                                   style: IconButton.styleFrom(
-                                    backgroundColor: const Color(0xFF10B981).withOpacity(0.1),
+                                    backgroundColor: const Color(0xFF10B981).withValues(alpha:0.1),
                                     padding: const EdgeInsets.all(16),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(20),
-                                      side: BorderSide(color: const Color(0xFF10B981).withOpacity(0.2)),
+                                      side: BorderSide(color: const Color(0xFF10B981).withValues(alpha:0.2)),
                                     )
                                   ),
                                 ).animate().scale(delay: 500.ms),
                                 const SizedBox(height: 8),
                                 Text(
                                   'Connexion biométrique',
-                                  style: GoogleFonts.outfit(color: Colors.grey.withOpacity(0.7), fontSize: 12),
+                                  style: GoogleFonts.outfit(color: Colors.grey.withValues(alpha:0.7), fontSize: 12),
                                 ),
                               ],
                             ],
@@ -581,9 +597,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                       ),
                     ),
-                  ),
-                ),
-              );
+                  );
             },
           ),
           ),
@@ -636,6 +650,8 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
   // Search & Filter State
   String _searchQuery = '';
   String _filterOption = 'Tous'; // 'Tous', 'Admis', 'Échec'
+
+  DateTime? _lastPressedAt;
 
   @override
   void dispose() {
@@ -888,7 +904,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Aucune donnée à exporter.'),
-          backgroundColor: Colors.orange.withOpacity(0.8),
+          backgroundColor: Colors.orange.withValues(alpha:0.8),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -1100,7 +1116,29 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        final now = DateTime.now();
+        final maxDuration = const Duration(seconds: 2);
+        final isWarning = _lastPressedAt == null || 
+            now.difference(_lastPressedAt!) > maxDuration;
+
+        if (isWarning) {
+          _lastPressedAt = now;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Appuyez encore pour quitter'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+          return;
+        }
+        
+        await SystemNavigator.pop();
+      },
+      child: Scaffold(
       backgroundColor: const Color(0xFFF1F5F9), // Light grey background
       drawer: _buildDrawer(), // Added Drawer
       body: SafeArea(
@@ -1126,6 +1164,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
                 ],
               ),
       ),
+      ),
     );
   }
 
@@ -1148,7 +1187,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
             ),
             accountEmail: Text(
               '${widget.userRole} - ${widget.userLevel}',
-              style: TextStyle(color: Colors.white.withOpacity(0.9)),
+              style: TextStyle(color: Colors.white.withValues(alpha:0.9)),
             ),
             currentAccountPicture: CircleAvatar(
               backgroundColor: Colors.white,
@@ -1278,7 +1317,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
                child: Container(
                  padding: const EdgeInsets.all(12),
                  decoration: BoxDecoration(
-                   color: Colors.red.withOpacity(0.1),
+                   color: Colors.red.withValues(alpha:0.1),
                    borderRadius: BorderRadius.circular(12),
                  ),
                  child: Row(
@@ -1335,9 +1374,9 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
           Container(
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha:0.2),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withOpacity(0.3)),
+              border: Border.all(color: Colors.white.withValues(alpha:0.3)),
             ),
             child: InkWell(
               borderRadius: BorderRadius.circular(20),
@@ -1492,10 +1531,10 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
         decoration: BoxDecoration(
           color: isFilled ? color : Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: isFilled ? null : Border.all(color: color.withOpacity(0.5), width: 2),
+          border: isFilled ? null : Border.all(color: color.withValues(alpha:0.5), width: 2),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(isFilled ? 0.3 : 0.05),
+              color: color.withValues(alpha:isFilled ? 0.3 : 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             )
@@ -1506,7 +1545,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: isFilled ? Colors.white.withOpacity(0.2) : color.withOpacity(0.1),
+                color: isFilled ? Colors.white.withValues(alpha:0.2) : color.withValues(alpha:0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: isFilled ? Colors.white : color, size: 28),
@@ -1525,14 +1564,14 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
                 Text(
                   subtitle,
                   style: GoogleFonts.outfit(
-                      color: isFilled ? Colors.white.withOpacity(0.8) : Colors.grey,
+                      color: isFilled ? Colors.white.withValues(alpha:0.8) : Colors.grey,
                       fontSize: 12),
                 ),
               ],
             ),
             const Spacer(),
             Icon(Icons.arrow_forward_ios_rounded,
-                color: isFilled ? Colors.white.withOpacity(0.8) : Colors.grey[400], size: 16),
+                color: isFilled ? Colors.white.withValues(alpha:0.8) : Colors.grey[400], size: 16),
           ],
         ),
       ),
@@ -1545,7 +1584,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
       decoration: BoxDecoration(
         color: filled ? color : Colors.white,
         borderRadius: BorderRadius.circular(4),
-        border: filled ? null : Border.all(color: Colors.grey.withOpacity(0.3)),
+        border: filled ? null : Border.all(color: Colors.grey.withValues(alpha:0.3)),
       ),
       child: Text(
         text,
@@ -1563,11 +1602,11 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.query_stats, size: 64, color: Colors.grey.withOpacity(0.3)),
+            Icon(Icons.query_stats, size: 64, color: Colors.grey.withValues(alpha:0.3)),
             const SizedBox(height: 16),
             Text(
               'Aucune donnée pour les statistiques',
-              style: TextStyle(color: Colors.grey.withOpacity(0.5), fontSize: 16),
+              style: TextStyle(color: Colors.grey.withValues(alpha:0.5), fontSize: 16),
             ),
           ],
         ),
@@ -1832,9 +1871,9 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.05),
+          color: color.withValues(alpha:0.05),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.1)),
+          border: Border.all(color: color.withValues(alpha:0.1)),
         ),
         child: Row(
           children: [
@@ -1844,7 +1883,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
                 color: Colors.white,
                 shape: BoxShape.circle,
                 boxShadow: [
-                   BoxShadow(color: color.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4))
+                   BoxShadow(color: color.withValues(alpha:0.2), blurRadius: 10, offset: const Offset(0, 4))
                 ]
               ),
               child: Icon(icon, color: color, size: 24),
@@ -1859,7 +1898,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
                 ],
               ),
             ),
-            Icon(Icons.arrow_forward_ios, size: 16, color: color.withOpacity(0.5)),
+            Icon(Icons.arrow_forward_ios, size: 16, color: color.withValues(alpha:0.5)),
           ],
         ),
       ),
@@ -1904,11 +1943,11 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
                   prefixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
+                    borderSide: BorderSide(color: Colors.grey.withValues(alpha:0.3)),
                   ),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                   filled: true,
-                  fillColor: Colors.grey.withOpacity(0.05),
+                  fillColor: Colors.grey.withValues(alpha:0.05),
                 ),
                 onChanged: (v) => setState(() => _searchQuery = v),
               ),
@@ -1944,7 +1983,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(minWidth: 500),
                 child: DataTable(
-                  headingRowColor: MaterialStateProperty.all(const Color(0xFF10B981)),
+                  headingRowColor: WidgetStateProperty.all(const Color(0xFF10B981)),
                   headingTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                   columns: const [
                      DataColumn(label: Text('NOM')),
@@ -1962,8 +2001,8 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                            decoration: BoxDecoration(
                              color: (student.average ?? 0) >= 10 
-                                 ? const Color(0xFF10B981).withOpacity(0.1) 
-                                 : Colors.red.withOpacity(0.1),
+                                 ? const Color(0xFF10B981).withValues(alpha:0.1) 
+                                 : Colors.red.withValues(alpha:0.1),
                              borderRadius: BorderRadius.circular(8),
                            ),
                            child: Text(
@@ -2006,7 +2045,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
         decoration: BoxDecoration(
           color: isSelected ? activeColor : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: isSelected ? activeColor : Colors.grey.withOpacity(0.3)),
+          border: Border.all(color: isSelected ? activeColor : Colors.grey.withValues(alpha:0.3)),
         ),
         child: Text(
           label,
@@ -2027,7 +2066,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
         title: Row(
           children: [
             CircleAvatar(
-              backgroundColor: const Color(0xFF10B981).withOpacity(0.1),
+              backgroundColor: const Color(0xFF10B981).withValues(alpha:0.1),
               child: Text(student.name[0], style: const TextStyle(color: Color(0xFF10B981))),
             ),
             const SizedBox(width: 12),
@@ -2181,14 +2220,14 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
                   ),
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
-                    BoxShadow(color: const Color(0xFF10B981).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))
+                    BoxShadow(color: const Color(0xFF10B981).withValues(alpha:0.3), blurRadius: 20, offset: const Offset(0, 10))
                   ]
                 ),
                 child: Column(
                   children: [
                     Container(
                       padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha:0.2), shape: BoxShape.circle),
                       child: const Icon(Icons.school, size: 40, color: Colors.white),
                     ),
                     const SizedBox(height: 16),
@@ -2201,14 +2240,14 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
                       const SizedBox(height: 8),
                       Text(
                         'Sélectionnez votre niveau',
-                        style: GoogleFonts.outfit(color: Colors.white.withOpacity(0.9), fontSize: 16),
+                        style: GoogleFonts.outfit(color: Colors.white.withValues(alpha:0.9), fontSize: 16),
                       ),
                     ],
 
                     const SizedBox(height: 24),
                     Text(
                       'Sélectionnez votre espace de travail',
-                      style: GoogleFonts.outfit(color: Colors.white.withOpacity(0.9), fontSize: 16),
+                      style: GoogleFonts.outfit(color: Colors.white.withValues(alpha:0.9), fontSize: 16),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -2274,7 +2313,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
         ).animate().fadeIn().slideX(begin: -0.2),
         Text(
           'Voici vos performances académiques',
-          style: TextStyle(color: const Color(0xFF1E293B).withOpacity(0.7), fontSize: 16),
+          style: TextStyle(color: const Color(0xFF1E293B).withValues(alpha:0.7), fontSize: 16),
         ).animate().fadeIn(delay: 200.ms).slideX(begin: -0.2),
       ],
     );
@@ -2292,10 +2331,10 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.withOpacity(0.12)),
+        border: Border.all(color: Colors.grey.withValues(alpha:0.12)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha:0.04),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -2307,7 +2346,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: const Color(0xFF6366F1).withOpacity(0.12),
+              color: const Color(0xFF6366F1).withValues(alpha:0.12),
               borderRadius: BorderRadius.circular(14),
             ),
             child: const Icon(Icons.dashboard_rounded, color: Color(0xFF6366F1)),
@@ -2329,7 +2368,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
                 Text(
                   'Mode: $modeLabel',
                   style: TextStyle(
-                    color: const Color(0xFF1E293B).withOpacity(0.65),
+                    color: const Color(0xFF1E293B).withValues(alpha:0.65),
                     fontSize: 13,
                   ),
                 ),
@@ -2617,11 +2656,11 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
           child: Column(
             children: [
               Icon(Icons.upload_file,
-                  size: 64, color: const Color(0xFF1E293B).withOpacity(0.2)),
+                  size: 64, color: const Color(0xFF1E293B).withValues(alpha:0.2)),
               const SizedBox(height: 16),
               Text(
                 'Importez un fichier CSV/Excel',
-                style: TextStyle(color: const Color(0xFF1E293B).withOpacity(0.5)),
+                style: TextStyle(color: const Color(0xFF1E293B).withValues(alpha:0.5)),
               ),
             ],
           ),
@@ -2649,12 +2688,12 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isTop3 ? rankColor.withOpacity(0.5) : Colors.grey.withOpacity(0.1),
+              color: isTop3 ? rankColor.withValues(alpha:0.5) : Colors.grey.withValues(alpha:0.1),
                width: isTop3 ? 2 : 1,
             ),
              boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha:0.05),
                 blurRadius: 5,
                 offset: const Offset(0, 2),
               )
@@ -2663,7 +2702,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             leading: CircleAvatar(
-              backgroundColor: rankColor.withOpacity(0.2),
+              backgroundColor: rankColor.withValues(alpha:0.2),
               child: Text(
                 '#$rank',
                 style: TextStyle(
@@ -2682,7 +2721,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
             trailing: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFF6366F1).withOpacity(0.2),
+                color: const Color(0xFF6366F1).withValues(alpha:0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -2937,10 +2976,10 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+        border: Border.all(color: Colors.grey.withValues(alpha:0.1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha:0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           )
@@ -3016,11 +3055,11 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
           child: Column(
             children: [
               Icon(Icons.note_alt_outlined,
-                  size: 64, color: const Color(0xFF1E293B).withOpacity(0.2)),
+                  size: 64, color: const Color(0xFF1E293B).withValues(alpha:0.2)),
               const SizedBox(height: 16),
               Text(
                 'Aucune note pour le moment',
-                style: TextStyle(color: const Color(0xFF1E293B).withOpacity(0.5)),
+                style: TextStyle(color: const Color(0xFF1E293B).withValues(alpha:0.5)),
               ),
             ],
           ),
@@ -3070,10 +3109,10 @@ class _NoteCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+        border: Border.all(color: Colors.grey.withValues(alpha:0.1)),
         boxShadow: [
            BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha:0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           )
@@ -3092,7 +3131,7 @@ class _NoteCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF6366F1).withOpacity(0.1),
+                      color: const Color(0xFF6366F1).withValues(alpha:0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -3121,10 +3160,10 @@ class _NoteCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                  border: Border.all(color: Colors.grey.withValues(alpha:0.1)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha:0.05),
                       blurRadius: 5,
                     )
                   ],
@@ -3149,12 +3188,12 @@ class _NoteCard extends StatelessWidget {
                     label: Text(n.toStringAsFixed(1)),
                     backgroundColor: Colors.white,
                     labelStyle: const TextStyle(color: Color(0xFF1E293B)),
-                    side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+                    side: BorderSide(color: Colors.grey.withValues(alpha:0.2)),
                     padding: EdgeInsets.zero,
                   )),
               IconButton.filled(
                 style: IconButton.styleFrom(
-                  backgroundColor: const Color(0xFF6366F1).withOpacity(0.1),
+                  backgroundColor: const Color(0xFF6366F1).withValues(alpha:0.1),
                   foregroundColor: const Color(0xFF6366F1),
                 ),
                 icon: const Icon(Icons.add, size: 18),
@@ -3166,7 +3205,7 @@ class _NoteCard extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: IconButton(
               icon: Icon(Icons.delete_outline,
-                  color: Colors.red.withOpacity(0.7)),
+                  color: Colors.red.withValues(alpha:0.7)),
               onPressed: onDelete,
             ),
           ),
@@ -3253,8 +3292,8 @@ class _AddNoteDialogState extends State<_AddNoteDialog> {
             style: const TextStyle(color: Color(0xFF1E293B)),
             decoration: InputDecoration(
               hintText: 'Ex: 15.5',
-              hintStyle: TextStyle(color: const Color(0xFF1E293B).withOpacity(0.3)),
-              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: const Color(0xFF1E293B).withOpacity(0.2))),
+              hintStyle: TextStyle(color: const Color(0xFF1E293B).withValues(alpha:0.3)),
+              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: const Color(0xFF1E293B).withValues(alpha:0.2))),
             ),
           ),
         ],
@@ -3341,7 +3380,7 @@ class _AnimatedBackground extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFF6366F1).withOpacity(0.2), // Lighter Indigo
+                    const Color(0xFF6366F1).withValues(alpha:0.2), // Lighter Indigo
                     Colors.transparent
                   ],
                 ),
@@ -3365,7 +3404,7 @@ class _AnimatedBackground extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFFEC4899).withOpacity(0.2), // Lighter Pink
+                    const Color(0xFFEC4899).withValues(alpha:0.2), // Lighter Pink
                     Colors.transparent
                   ],
                 ),
@@ -3389,7 +3428,7 @@ class _AnimatedBackground extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFF06B6D4).withOpacity(0.15), // Lighter Cyan
+                    const Color(0xFF06B6D4).withValues(alpha:0.15), // Lighter Cyan
                     Colors.transparent
                   ],
                 ),
@@ -3404,7 +3443,7 @@ class _AnimatedBackground extends StatelessWidget {
           BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
             child: Container(
-              color: Colors.white.withOpacity(0.1), // Very light overlay
+              color: Colors.white.withValues(alpha:0.1), // Very light overlay
             ),
           ),
           
@@ -3415,9 +3454,9 @@ class _AnimatedBackground extends StatelessWidget {
                  begin: Alignment.topLeft,
                  end: Alignment.bottomRight,
                  colors: [
-                   Colors.black.withOpacity(0.01),
+                   Colors.black.withValues(alpha:0.01),
                    Colors.transparent,
-                   Colors.black.withOpacity(0.01),
+                   Colors.black.withValues(alpha:0.01),
                  ],
                ),
              ),
@@ -3454,18 +3493,18 @@ class _GlassTextField extends StatelessWidget {
       validator: validator,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: const Color(0xFF1E293B).withOpacity(0.6)),
-        prefixIcon: Icon(icon, color: const Color(0xFF1E293B).withOpacity(0.6)),
+        labelStyle: TextStyle(color: const Color(0xFF1E293B).withValues(alpha:0.6)),
+        prefixIcon: Icon(icon, color: const Color(0xFF1E293B).withValues(alpha:0.6)),
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: Colors.white.withOpacity(0.5), // Lighter fill
+        fillColor: Colors.white.withValues(alpha:0.5), // Lighter fill
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: const Color(0xFF1E293B).withOpacity(0.1)),
+          borderSide: BorderSide(color: const Color(0xFF1E293B).withValues(alpha:0.1)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
@@ -3496,10 +3535,10 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white, // Solid white card for pop
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+        border: Border.all(color: Colors.grey.withValues(alpha:0.1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha:0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           )
@@ -3520,7 +3559,7 @@ class _StatCard extends StatelessWidget {
           ),
           Text(
             title,
-            style: TextStyle(color: const Color(0xFF1E293B).withOpacity(0.5)),
+            style: TextStyle(color: const Color(0xFF1E293B).withValues(alpha:0.5)),
           ),
         ],
       ),
@@ -3551,18 +3590,18 @@ class _GlassButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            border: Border.all(color: isActive ? const Color(0xFF6366F1) : const Color(0xFF1E293B).withOpacity(0.1)),
+            border: Border.all(color: isActive ? const Color(0xFF6366F1) : const Color(0xFF1E293B).withValues(alpha:0.1)),
             borderRadius: BorderRadius.circular(16),
-            color: isActive ? const Color(0xFF6366F1).withOpacity(0.1) : Colors.white.withOpacity(0.5),
+            color: isActive ? const Color(0xFF6366F1).withValues(alpha:0.1) : Colors.white.withValues(alpha:0.5),
           ),
           child: Column(
             children: [
-              Icon(icon, color: isActive ? const Color(0xFF6366F1) : const Color(0xFF1E293B).withOpacity(0.7)),
+              Icon(icon, color: isActive ? const Color(0xFF6366F1) : const Color(0xFF1E293B).withValues(alpha:0.7)),
               const SizedBox(height: 4),
               Text(
                 label,
                 style: TextStyle(
-                    color: isActive ? const Color(0xFF6366F1) : const Color(0xFF1E293B).withOpacity(0.7), fontWeight: FontWeight.w600),
+                    color: isActive ? const Color(0xFF6366F1) : const Color(0xFF1E293B).withValues(alpha:0.7), fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -3598,15 +3637,15 @@ class _FilterChip extends StatelessWidget {
                 : Colors.white,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: selected ? Colors.transparent : const Color(0xFF1E293B).withOpacity(0.1),
+              color: selected ? Colors.transparent : const Color(0xFF1E293B).withValues(alpha:0.1),
             ),
-             boxShadow: selected ? [] : [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 5)],
+             boxShadow: selected ? [] : [BoxShadow(color: Colors.black.withValues(alpha:0.03), blurRadius: 5)],
           ),
           child: Center(
             child: Text(
               label,
               style: TextStyle(
-                color: selected ? Colors.white : const Color(0xFF1E293B).withOpacity(0.7),
+                color: selected ? Colors.white : const Color(0xFF1E293B).withValues(alpha:0.7),
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -3638,10 +3677,10 @@ class _LevelCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+        border: Border.all(color: Colors.grey.withValues(alpha:0.1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha:0.05),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -3659,7 +3698,7 @@ class _LevelCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha:0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(icon, color: color, size: 32),
@@ -3681,7 +3720,7 @@ class _LevelCard extends StatelessWidget {
                       Text(
                         subtitle,
                         style: TextStyle(
-                          color: const Color(0xFF1E293B).withOpacity(0.5),
+                          color: const Color(0xFF1E293B).withValues(alpha:0.5),
                           fontSize: 14,
                         ),
                       ),
@@ -3690,7 +3729,7 @@ class _LevelCard extends StatelessWidget {
                 ),
                 Icon(
                   Icons.arrow_forward_ios_rounded,
-                  color: const Color(0xFF1E293B).withOpacity(0.3),
+                  color: const Color(0xFF1E293B).withValues(alpha:0.3),
                   size: 20,
                 ),
               ],
@@ -3723,10 +3762,10 @@ class _PremiumActionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+        border: Border.all(color: Colors.grey.withValues(alpha:0.1)),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.15),
+            color: color.withValues(alpha:0.15),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -3745,7 +3784,7 @@ class _PremiumActionCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha:0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(icon, color: color, size: 32),
@@ -3765,7 +3804,7 @@ class _PremiumActionCard extends StatelessWidget {
                   subtitle,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: const Color(0xFF1E293B).withOpacity(0.5),
+                    color: const Color(0xFF1E293B).withValues(alpha:0.5),
                     fontSize: 12,
                   ),
                 ),
@@ -3826,7 +3865,7 @@ class _DrawerItem extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
       selected: isActive,
-      selectedTileColor: const Color(0xFF10B981).withOpacity(0.1),
+      selectedTileColor: const Color(0xFF10B981).withValues(alpha:0.1),
     );
   }
 }

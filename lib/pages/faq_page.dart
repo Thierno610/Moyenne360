@@ -66,12 +66,12 @@ class _FaqPageState extends State<FaqPage> {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
+                  color: Colors.black.withValues(alpha:0.03),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
               ],
-               border: isDark ? Border.all(color: Colors.white.withOpacity(0.05)) : null,
+               border: isDark ? Border.all(color: Colors.white.withValues(alpha:0.05)) : null,
             ),
             child: Theme(
               data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -88,7 +88,7 @@ class _FaqPageState extends State<FaqPage> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withOpacity(0.1),
+                    color: const Color(0xFF10B981).withValues(alpha:0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.help_outline_rounded, color: Color(0xFF10B981), size: 20),
@@ -99,7 +99,7 @@ class _FaqPageState extends State<FaqPage> {
                     child: Text(
                       faq['answer']!,
                       style: GoogleFonts.outfit(
-                        color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                        color: theme.textTheme.bodyMedium?.color?.withValues(alpha:0.7),
                         height: 1.5,
                         fontSize: 14,
                       ),

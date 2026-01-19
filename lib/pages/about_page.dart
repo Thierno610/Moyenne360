@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:package_info_plus/package_info_plus.dart';
+
 
 class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
@@ -62,7 +62,7 @@ class _AboutPageState extends State<AboutPage> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF10B981).withOpacity(0.3),
+                      color: const Color(0xFF10B981).withValues(alpha:0.3),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
                     ),
@@ -88,7 +88,7 @@ class _AboutPageState extends State<AboutPage> {
             Text(
               'Version $_version',
               style: GoogleFonts.outfit(
-                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                color: theme.textTheme.bodyMedium?.color?.withValues(alpha:0.6),
                 fontSize: 14,
               ),
             ).animate().fadeIn(delay: 200.ms),
@@ -168,12 +168,12 @@ class _AboutPageState extends State<AboutPage> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha:0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
-         border: isDark ? Border.all(color: Colors.white.withOpacity(0.05)) : null,
+         border: isDark ? Border.all(color: Colors.white.withValues(alpha:0.05)) : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -182,11 +182,11 @@ class _AboutPageState extends State<AboutPage> {
             children: [
               Icon(icon, color: const Color(0xFF10B981), size: 20),
               const SizedBox(width: 8),
-              Text(title, style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, color: theme.textTheme.bodyLarge?.color?.withOpacity(0.8))),
+              Text(title, style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, color: theme.textTheme.bodyLarge?.color?.withValues(alpha:0.8))),
             ],
           ),
           const SizedBox(height: 12),
-          Text(content, style: GoogleFonts.outfit(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7), height: 1.5)),
+          Text(content, style: GoogleFonts.outfit(color: theme.textTheme.bodyMedium?.color?.withValues(alpha:0.7), height: 1.5)),
         ],
       ),
     ).animate().fadeIn().moveX(begin: 10, end: 0);
@@ -207,19 +207,19 @@ class _AboutPageState extends State<AboutPage> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha:0.03),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
           ],
-          border: isDark ? Border.all(color: Colors.white.withOpacity(0.05)) : null,
+          border: isDark ? Border.all(color: Colors.white.withValues(alpha:0.05)) : null,
         ),
         child: Row(
           children: [
-            Icon(icon, color: theme.iconTheme.color?.withOpacity(0.7), size: 22),
+            Icon(icon, color: theme.iconTheme.color?.withValues(alpha:0.7), size: 22),
             const SizedBox(width: 16),
             Expanded(child: Text(title, style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w500, color: theme.textTheme.bodyLarge?.color))),
-            Icon(Icons.arrow_forward_ios, color: theme.iconTheme.color?.withOpacity(0.3), size: 14),
+            Icon(Icons.arrow_forward_ios, color: theme.iconTheme.color?.withValues(alpha:0.3), size: 14),
           ],
         ),
       ),

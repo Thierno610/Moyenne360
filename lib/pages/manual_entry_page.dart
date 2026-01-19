@@ -193,9 +193,9 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
             color: theme.cardTheme.color,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+              BoxShadow(color: Colors.black.withValues(alpha:0.05), blurRadius: 10, offset: const Offset(0, 4)),
             ],
-            border: isDark ? Border.all(color: Colors.white.withOpacity(0.05)) : null,
+            border: isDark ? Border.all(color: Colors.white.withValues(alpha:0.05)) : null,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -205,7 +205,7 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
                    Container(
                      width: 32, height: 32,
                      decoration: BoxDecoration(
-                       color: const Color(0xFF10B981).withOpacity(0.1),
+                       color: const Color(0xFF10B981).withValues(alpha:0.1),
                        shape: BoxShape.circle,
                      ),
                      child: Center(
@@ -219,14 +219,14 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
                         style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16, color: theme.textTheme.bodyLarge?.color),
                         decoration: InputDecoration(
                           hintText: 'Nom de l\'élève',
-                          hintStyle: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.4)),
+                          hintStyle: TextStyle(color: theme.textTheme.bodyMedium?.color?.withValues(alpha:0.4)),
                           border: InputBorder.none,
                           isDense: true,
                         ),
                      ),
                    ),
                    IconButton(
-                     icon: Icon(Icons.delete_outline, color: Colors.redAccent.withOpacity(0.7)),
+                     icon: Icon(Icons.delete_outline, color: Colors.redAccent.withValues(alpha:0.7)),
                      onPressed: () {
                         setState(() {
                           _rows.removeAt(index);
@@ -250,8 +250,8 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
                 padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                 decoration: BoxDecoration(
                   color: (avg != null && avg >= 10) 
-                      ? const Color(0xFF10B981).withOpacity(0.1) 
-                      : Colors.red.withOpacity(0.05),
+                      ? const Color(0xFF10B981).withValues(alpha:0.1) 
+                      : Colors.red.withValues(alpha:0.05),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -283,14 +283,14 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: GoogleFonts.outfit(fontSize: 11, color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5))),
+        Text(label, style: GoogleFonts.outfit(fontSize: 11, color: theme.textTheme.bodyMedium?.color?.withValues(alpha:0.5))),
         const SizedBox(height: 6),
         Container(
           height: 44,
           decoration: BoxDecoration(
-             color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[50],
+             color: isDark ? Colors.white.withValues(alpha:0.05) : Colors.grey[50],
              borderRadius: BorderRadius.circular(12),
-             border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
+             border: Border.all(color: theme.dividerColor.withValues(alpha:0.1)),
           ),
           child: Center(
             child: TextField(
@@ -348,11 +348,11 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
                   decoration: BoxDecoration(
                     color: theme.cardTheme.color,
                     borderRadius: BorderRadius.circular(12),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: const Offset(0, 2))],
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha:0.03), blurRadius: 6, offset: const Offset(0, 2))],
                   ),
                   child: Row(
                     children: [
-                      SizedBox(width: 40, child: Text('${index + 1}', style: GoogleFonts.outfit(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5)))),
+                      SizedBox(width: 40, child: Text('${index + 1}', style: GoogleFonts.outfit(color: theme.textTheme.bodyMedium?.color?.withValues(alpha:0.5)))),
                       Expanded(
                         flex: 3, 
                         child: TextField(
@@ -361,7 +361,7 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
                            decoration: InputDecoration(
                              border: InputBorder.none, 
                              hintText: 'Nom Élève',
-                             hintStyle: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.3))
+                             hintStyle: TextStyle(color: theme.textTheme.bodyMedium?.color?.withValues(alpha:0.3))
                            ),
                         ),
                       ),
@@ -374,7 +374,7 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
-                              color: avg != null && avg >= 10 ? const Color(0xFF10B981).withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                              color: avg != null && avg >= 10 ? const Color(0xFF10B981).withValues(alpha:0.1) : Colors.red.withValues(alpha:0.1),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
@@ -388,7 +388,7 @@ class _ManualEntryPageState extends State<ManualEntryPage> {
                         ),
                       ),
                       IconButton(
-                        icon: Icon(Icons.close_rounded, color: theme.iconTheme.color?.withOpacity(0.3)),
+                        icon: Icon(Icons.close_rounded, color: theme.iconTheme.color?.withValues(alpha:0.3)),
                          onPressed: () {
                             setState(() {
                               _rows.removeAt(index);

@@ -30,7 +30,7 @@ class ComingSoonPage extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withOpacity(0.1),
+                color: const Color(0xFF10B981).withValues(alpha:0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.construction_rounded, size: 80, color: Color(0xFF10B981)),
@@ -55,7 +55,7 @@ class ComingSoonPage extends StatelessWidget {
                 'Cette fonctionnalité est en cours de développement. Revenez bientôt pour découvrir les nouveautés !',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.outfit(
-                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                  color: theme.textTheme.bodyMedium?.color?.withValues(alpha:0.6),
                   fontSize: 16,
                   height: 1.5
                 ),

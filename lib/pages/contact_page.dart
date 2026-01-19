@@ -71,7 +71,7 @@ class _ContactPageState extends State<ContactPage> {
                   width: 100,
                   height: 100,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withOpacity(0.1),
+                    color: const Color(0xFF10B981).withValues(alpha:0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.mail_outline_rounded, size: 48, color: Color(0xFF10B981)),
@@ -91,7 +91,7 @@ class _ContactPageState extends State<ContactPage> {
               Text(
                 'Remplissez le formulaire ci-dessous et notre équipe vous répondra dans les plus brefs délais.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7)),
+                style: GoogleFonts.outfit(color: theme.textTheme.bodyMedium?.color?.withValues(alpha:0.7)),
               ).animate().fadeIn(delay: 200.ms).moveY(begin: 10, end: 0),
 
               const SizedBox(height: 32),
@@ -113,7 +113,7 @@ class _ContactPageState extends State<ContactPage> {
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     elevation: 4,
-                    shadowColor: const Color(0xFF10B981).withOpacity(0.4),
+                    shadowColor: const Color(0xFF10B981).withValues(alpha:0.4),
                   ),
                   child: _isSending
                       ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
@@ -142,12 +142,12 @@ class _ContactPageState extends State<ContactPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha:0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
-        border: isDark ? Border.all(color: Colors.white.withOpacity(0.05)) : null,
+        border: isDark ? Border.all(color: Colors.white.withValues(alpha:0.05)) : null,
       ),
       child: TextFormField(
         controller: controller,
@@ -156,8 +156,8 @@ class _ContactPageState extends State<ContactPage> {
         validator: (value) => value == null || value.isEmpty ? 'Ce champ est requis' : null,
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6)),
-          prefixIcon: Icon(icon, color: theme.iconTheme.color?.withOpacity(0.5)),
+          labelStyle: TextStyle(color: theme.textTheme.bodyMedium?.color?.withValues(alpha:0.6)),
+          prefixIcon: Icon(icon, color: theme.iconTheme.color?.withValues(alpha:0.5)),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           alignLabelWithHint: maxLines > 1,

@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'dart:typed_data';
+
 import 'package:excel/excel.dart';
 import 'package:moyenne_auto/models/student_grade.dart';
 import 'package:path_provider/path_provider.dart';
@@ -30,7 +30,7 @@ class ExportService {
               ),
             ),
             pw.SizedBox(height: 20),
-            pw.Table.fromTextArray(
+            pw.TableHelper.fromTextArray(
               context: context,
               headers: ['Rang', 'Nom', 'Nombre de notes', 'Moyenne'],
               data: students.map((student) {

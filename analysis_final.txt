@@ -1,0 +1,64 @@
+Analyzing Applicaition...                                       
+
+  error - The argument for the named parameter 'surface' was already specified - lib\main.dart:60:9 - duplicate_named_argument
+  error - The argument for the named parameter 'surface' was already specified - lib\main.dart:89:9 - duplicate_named_argument
+   info - Use 'const' with the constructor to improve performance - lib\main.dart:435:51 - prefer_const_constructors
+warning - The value of the field '_isLoading' isn't used - lib\main.dart:636:8 - unused_field
+   info - Unnecessary braces in a string interpolation - lib\main.dart:746:14 - unnecessary_brace_in_string_interps
+   info - Don't invoke 'print' in production code - lib\main.dart:757:7 - avoid_print
+   info - Unnecessary braces in a string interpolation - lib\main.dart:801:10 - unnecessary_brace_in_string_interps
+warning - The declaration '_ajouterExemple' isn't referenced - lib\main.dart:890:8 - unused_element
+warning - The declaration '_exporterFiches' isn't referenced - lib\main.dart:902:16 - unused_element
+warning - The declaration '_importerFiches' isn't referenced - lib\main.dart:1004:16 - unused_element
+warning - The value of the local variable 'classAvg' isn't used - lib\main.dart:1090:13 - unused_local_variable
+   info - 'onPopInvoked' is deprecated and shouldn't be used. Use onPopInvokedWithResult instead. This feature was deprecated after v3.22.0-12.0.pre - lib\main.dart:1121:7 - deprecated_member_use
+   info - Use 'const' for final variables initialized to a constant value - lib\main.dart:1124:9 - prefer_const_declarations
+   info - Use 'const' with the constructor to improve performance - lib\main.dart:1361:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\main.dart:1362:20 - prefer_const_constructors
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\main.dart:1441:48 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\main.dart:1477:48 - use_build_context_synchronously
+   info - Statements in an if should be enclosed in a block - lib\main.dart:1739:21 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\main.dart:1740:26 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\main.dart:1741:26 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\main.dart:1742:26 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\main.dart:1743:12 - curly_braces_in_flow_control_structures
+   info - Use 'const' with the constructor to improve performance - lib\main.dart:2161:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\main.dart:2161:48 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\main.dart:2162:24 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\main.dart:2162:47 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\main.dart:2163:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\main.dart:2163:49 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\main.dart:2165:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\main.dart:2216:29 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\main.dart:2219:29 - prefer_const_literals_to_create_immutables
+warning - The declaration '_buildHeader' isn't referenced - lib\main.dart:2303:10 - unused_element
+warning - The declaration '_buildDashboardBanner' isn't referenced - lib\main.dart:2322:10 - unused_element
+warning - The declaration '_buildDashboardActions' isn't referenced - lib\main.dart:2388:10 - unused_element
+warning - The declaration '_buildClassStats' isn't referenced - lib\main.dart:2625:10 - unused_element
+warning - The declaration '_buildClassList' isn't referenced - lib\main.dart:2651:10 - unused_element
+warning - The declaration '_showClassInputChoice' isn't referenced - lib\main.dart:2800:8 - unused_element
+warning - The declaration '_buildFilters' isn't referenced - lib\main.dart:2951:10 - unused_element
+warning - The declaration '_buildAddForm' isn't referenced - lib\main.dart:2973:10 - unused_element
+warning - The declaration '_buildNotesList' isn't referenced - lib\main.dart:3050:10 - unused_element
+   info - Use 'const' with the constructor to improve performance - lib\main.dart:3280:27 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\main.dart:3285:27 - prefer_const_constructors
+warning - A value for optional parameter 'isActive' isn't ever given - lib\main.dart:3575:11 - unused_element_parameter
+warning - A value for optional parameter 'key' isn't ever given - lib\main.dart:3824:28 - unused_element_parameter
+warning - A value for optional parameter 'key' isn't ever given - lib\main.dart:3846:11 - unused_element_parameter
+warning - The value of the local variable 'isDark' isn't used - lib\pages\about_page.dart:35:11 - unused_local_variable
+warning - The value of the field '_fileName' isn't used - lib\pages\file_upload_page.dart:26:11 - unused_field
+   info - The private field _history could be 'final' - lib\pages\history_page.dart:14:30 - prefer_final_fields
+warning - The value of the local variable 'isDark' isn't used - lib\pages\history_page.dart:59:11 - unused_local_variable
+   info - The private field _rows could be 'final' - lib\pages\manual_entry_page.dart:24:30 - prefer_final_fields
+warning - The value of the local variable 'classId' isn't used - lib\services\database_example.dart:26:11 - unused_local_variable
+   info - Don't invoke 'print' in production code - lib\services\database_example.dart:28:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\database_example.dart:39:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\database_example.dart:67:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\database_example.dart:83:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\database_example.dart:85:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\database_example.dart:86:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\database_example.dart:91:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\database_example.dart:108:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\database_example.dart:110:7 - avoid_print
+   info - Use 'const' with the constructor to improve performance - lib\services\export_service.dart:28:56 - prefer_const_constructors
+
