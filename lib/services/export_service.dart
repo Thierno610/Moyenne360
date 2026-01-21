@@ -87,7 +87,7 @@ class ExportService {
       String details = student.grades.entries.map((e) => '${e.key}: ${e.value}').join(', ');
       
       sheet.appendRow([
-        IntCellValue(student.rank),
+        IntCellValue(student.rank ?? 0),
         TextCellValue(student.name),
         DoubleCellValue(student.average ?? 0.0),
         TextCellValue(details),

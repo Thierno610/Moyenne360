@@ -6,7 +6,7 @@ class AuthService {
   final LocalAuthentication _auth = LocalAuthentication();
   
   static const String _biometricEnabledKey = 'biometric_enabled';
-  static const String _userEmailKey = 'last_user_email';
+  static const String _userNameKey = 'last_user_name';
   static const String _userRoleKey = 'last_user_role';
   static const String _userLevelKey = 'last_user_level';
 
@@ -23,6 +23,10 @@ class AuthService {
 
   /// Authenticate the user using biometrics
   Future<bool> authenticate() async {
+    // Defense in depth: Check preference before attempting auth
+    final enabled = await getBiometricEnabled();
+    if (!enabled) return false;
+
     try {
       final bool didAuthenticate = await _auth.authenticate(
         localizedReason: 'Veuillez vous authentifier pour accéder à l\'application',
@@ -58,26 +62,62 @@ class AuthService {
     return prefs.getBool(_biometricEnabledKey) ?? false;
   }
 
-  Future<void> saveUserCredentials(String email, String role, String level) async {
+  Future<void> saveUserCredentials(String username, String role, String level) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_userEmailKey, email);
+    await prefs.setString(_userNameKey, username);
     await prefs.setString(_userRoleKey, role);
     await prefs.setString(_userLevelKey, level);
   }
 
   Future<Map<String, String>?> getUserCredentials() async {
     final prefs = await SharedPreferences.getInstance();
-    final email = prefs.getString(_userEmailKey);
+    final username = prefs.getString(_userNameKey);
     final role = prefs.getString(_userRoleKey);
     final level = prefs.getString(_userLevelKey);
 
-    if (email != null && role != null && level != null) {
+    if (username != null && role != null && level != null) {
       return {
-        'email': email,
+        'username': username,
         'role': role,
         'level': level,
       };
     }
     return null;
+  }
+
+  // --- Full Profile Persistence ---
+
+  Future<void> saveUserProfile(String username, Map<String, String> profile) async {
+    final prefs = await SharedPreferences.getInstance();
+    // Key example: profile_admin, profile_jean
+    final key = 'profile_$username';
+    
+    for (var entry in profile.entries) {
+      await prefs.setString('${key}_${entry.key}', entry.value);
+    }
+    
+    // Also update credentials if core fields changed
+    if (profile.containsKey('role') || profile.containsKey('level')) {
+       await saveUserCredentials(username, profile['role']!, profile['level']!);
+    }
+  }
+
+  Future<Map<String, String>?> getUserProfile(String username) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'profile_$username';
+    
+    // Check if at least name exists to see if profile is initialized
+    final name = prefs.getString('${key}_name');
+    if (name == null) return null;
+
+    return {
+      'name': name,
+      'email': prefs.getString('${key}_email') ?? '',
+      'phone': prefs.getString('${key}_phone') ?? '',
+      'role': prefs.getString('${key}_role') ?? '',
+      'level': prefs.getString('${key}_level') ?? '',
+      'bio': prefs.getString('${key}_bio') ?? '',
+      'imagePath': prefs.getString('${key}_imagePath') ?? '',
+    };
   }
 }

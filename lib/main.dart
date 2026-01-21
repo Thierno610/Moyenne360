@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'dart:convert';
 import 'dart:io';
 
@@ -12,16 +11,21 @@ import 'package:csv/csv.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:moyenne_auto/models/student_grade.dart';
+import 'package:moyenne_auto/pages/auth_page.dart';
+import 'package:moyenne_auto/pages/import_history_page.dart';
 import 'package:moyenne_auto/services/grade_service.dart';
 import 'package:moyenne_auto/pages/manual_entry_page.dart';
 import 'package:moyenne_auto/pages/file_upload_page.dart';
-import 'package:moyenne_auto/services/auth_service.dart';
+// auth_service removed
 import 'package:moyenne_auto/services/export_service.dart';
 import 'package:moyenne_auto/services/database_service.dart';
 import 'package:moyenne_auto/pages/settings_page.dart';
 import 'package:moyenne_auto/pages/history_page.dart';
 import 'package:moyenne_auto/pages/coming_soon_page.dart';
+import 'package:moyenne_auto/pages/about_page.dart';
+import 'package:moyenne_auto/pages/contact_page.dart';
 import 'package:moyenne_auto/pages/splash_page.dart'; // Import Splash
+import 'package:moyenne_auto/pages/landing_page.dart';
 
 import 'package:moyenne_auto/services/theme_service.dart';
 
@@ -144,14 +148,21 @@ class EntryShell extends StatefulWidget {
 
 class _EntryShellState extends State<EntryShell> {
   bool _isLoggedIn = false;
+  bool _showLanding = false;
   String _userName = 'Invité';
+  String _userDisplayName = 'Invité';
   String _userRole = 'Enseignant'; // Default
   String _userLevel = 'Primaire'; // Default for teacher
 
-  void _onLogin(String email, String role, String level) {
+  void _onLogin(String username, String role, String level) async {
+    final profile = await AuthService().getUserProfile(username);
+    final displayName = profile != null ? profile['name'] ?? username : username;
+    
     setState(() {
       _isLoggedIn = true;
-      _userName = email.split('@')[0];
+      _showLanding = true;
+      _userName = username; // Keep technical username
+      _userDisplayName = displayName; // Use real name for UI
       _userRole = role;
       _userLevel = level;
     });
@@ -167,459 +178,46 @@ class _EntryShellState extends State<EntryShell> {
   @override
   Widget build(BuildContext context) {
     if (_isLoggedIn) {
+      if (_showLanding) {
+        return LandingPage(
+          userName: _userName,
+          userLevel: _userLevel,
+          onContinue: () => setState(() => _showLanding = false),
+        );
+      }
       return MoyenneHomePage(
-        userName: _userName, 
-        userRole: _userRole,
-        userLevel: _userLevel,
-        onLogout: _onLogout
+          userName: _userName,
+          userDisplayName: _userDisplayName,
+          userRole: _userRole,
+          userLevel: _userLevel,
+          onLogout: _onLogout,
+          onProfileUpdate: (newName) {
+            setState(() => _userDisplayName = newName);
+          },
       );
     }
-    return LoginPage(onLogin: _onLogin);
+    return AuthPage(onLogin: _onLogin);
   }
 }
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key, required this.onLogin});
-
-  final void Function(String email, String role, String level) onLogin;
-
-  @override
-  State<LoginPage> createState() => _LoginPageState();
-}
-
-class _LoginPageState extends State<LoginPage> {
-  final _formKey = GlobalKey<FormState>();
-  final _name = TextEditingController();
-  final _email = TextEditingController();
-  final _password = TextEditingController();
-  final _confirmPassword = TextEditingController();
-  bool _showPassword = false;
-  bool _isLogin = true;
-  String _selectedRole = 'Enseignant';
-  String _selectedTeachingLevel = 'Primaire';
-
-  final _authService = AuthService();
-  bool _isBioAvailable = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkBiometrics();
-  }
-
-  Future<void> _checkBiometrics() async {
-    final available = await _authService.isBiometricAvailable();
-    if (!available) {
-      setState(() => _isBioAvailable = false);
-      return;
-    }
-    // Only show if user has enabled it in settings
-    final enabled = await _authService.getBiometricEnabled();
-    setState(() => _isBioAvailable = enabled);
-  }
-
-  Future<void> _handleBiometricLogin() async {
-    final authenticated = await _authService.authenticate();
-    if (authenticated) {
-      final credentials = await _authService.getUserCredentials();
-      if (credentials != null && mounted) {
-         widget.onLogin(credentials['email']!, credentials['role']!, credentials['level']!);
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Aucun identifiant sauvegardé. Veuillez vous connecter manuellement.')),
-        );
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Authentification biométrique échouée')),
-        );
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _name.dispose();
-    _email.dispose();
-    _password.dispose();
-    _confirmPassword.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    if (_formKey.currentState?.validate() != true) return;
-    
-    // Save credentials for future biometric login
-    _authService.saveUserCredentials(_email.text.trim(), _selectedRole, _selectedTeachingLevel);
-
-    // Pass selected role and level (only relevant if role is teacher)
-    widget.onLogin(_email.text.trim(), _selectedRole, _selectedTeachingLevel);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          // Animated Background
-          const _AnimatedBackground(),
-          
-          Center(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  physics: const ClampingScrollPhysics(), // Allow scroll if really needed, but FittedBox below tries to avoid it.
-                  padding: const EdgeInsets.all(24),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight - 48, // Ensure it takes height if needed
-                    ),
-                    child: Center(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(32),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                            child: Container(
-                              width: 420, // Check explicit width for scaling
-                              padding: const EdgeInsets.all(32),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).cardTheme.color?.withValues(alpha:0.9) ?? Colors.white.withValues(alpha:0.9),
-                      borderRadius: BorderRadius.circular(32),
-                      border: Border.all(color: Colors.grey.withValues(alpha:0.12)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha:0.06),
-                          blurRadius: 30,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Image.asset(
-                          'assets/images/logo.png',
-                          height: 150,
-                        )
-                            .animate(onPlay: (c) => c.repeat(reverse: true))
-                            .scale(
-                                begin: const Offset(1, 1),
-                                end: const Offset(1.05, 1.05),
-                                duration: 2.seconds,
-                                curve: Curves.easeInOut)
-                            .shimmer(
-                                duration: 2.seconds,
-                                color: Colors.white.withValues(alpha:0.2)),
-                        const SizedBox(height: 24),
-                        Text(
-                          'Moyennes Premium',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineMedium
-                              ?.copyWith(
-                                color: Theme.of(context).textTheme.headlineMedium?.color,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.2,
-                              ),
-                        ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.3),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Excellence académique',
-                          style: TextStyle(
-                              color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha:0.65),
-                              fontSize: 16),
-                        ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.3),
-                        const SizedBox(height: 40),
-                        Form(
-                          key: _formKey,
-                          child: Column(
-                            children: [
-                              _GlassTextField(
-                                controller: _email,
-                                label: 'Email',
-                                icon: Icons.email_outlined,
-                                validator: (v) => v?.contains('@') == true
-                                    ? null
-                                    : 'Email invalide',
-                              )
-                                  .animate()
-                                  .fadeIn(delay: 400.ms)
-                                  .slideX(begin: -0.2),
-                              const SizedBox(height: 20),
-                              if (!_isLogin) ...[
-                                _GlassTextField(
-                                  controller: _name,
-                                  label: 'Nom complet',
-                                  icon: Icons.person_outline,
-                                  validator: (v) => (v?.length ?? 0) < 3
-                                      ? 'Nom trop court'
-                                      : null,
-                                )
-                                    .animate()
-                                    .fadeIn(delay: 450.ms)
-                                    .slideX(begin: -0.2),
-                                const SizedBox(height: 20),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey.withValues(alpha:0.05),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: Colors.grey.withValues(alpha:0.2)),
-                                  ),
-                                  child: DropdownButtonHideUnderline(
-                                    child: DropdownButton<String>(
-                                      value: _selectedRole,
-                                      isExpanded: true,
-                                      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF1E293B)),
-                                      style: GoogleFonts.outfit(
-                                        color: Theme.of(context).textTheme.bodyLarge?.color,
-                                        fontSize: 16,
-                                      ),
-                                      onChanged: (String? newValue) {
-                                        setState(() {
-                                          _selectedRole = newValue!;
-                                        });
-                                      },
-                                      items: <String>['Enseignant', 'Directeur de programme']
-                                          .map<DropdownMenuItem<String>>((String value) {
-                                        return DropdownMenuItem<String>(
-                                          value: value,
-                                          child: Row(
-                                            children: [
-                                              Icon(
-                                                value == 'Enseignant' ? Icons.school : Icons.admin_panel_settings,
-                                                color: const Color(0xFF10B981),
-                                                size: 20,
-                                              ),
-                                              const SizedBox(width: 12),
-                                              Text(value),
-                                            ],
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
-                                  ),
-                                ).animate().fadeIn(delay: 480.ms).slideX(begin: -0.2),
-                                const SizedBox(height: 20),
-                                if (_selectedRole == 'Enseignant') ...[
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.withValues(alpha:0.05),
-                                        borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(color: Colors.grey.withValues(alpha:0.2)),
-                                      ),
-                                      child: DropdownButtonHideUnderline(
-                                        child: DropdownButton<String>(
-                                          value: _selectedTeachingLevel,
-                                          isExpanded: true,
-                                          icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF1E293B)),
-                                          style: GoogleFonts.outfit(
-                                            color: Theme.of(context).textTheme.bodyLarge?.color,
-                                            fontSize: 16,
-                                          ),
-                                          onChanged: (String? newValue) {
-                                            setState(() {
-                                              _selectedTeachingLevel = newValue!;
-                                            });
-                                          },
-                                          items: <String>['Primaire', 'Collège', 'Lycée']
-                                              .map<DropdownMenuItem<String>>((String value) {
-                                            return DropdownMenuItem<String>(
-                                              value: value,
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.class_,
-                                                    color: const Color(0xFF10B981),
-                                                    size: 20,
-                                                  ),
-                                                  const SizedBox(width: 12),
-                                                  Text(value),
-                                                ],
-                                              ),
-                                            );
-                                          }).toList(),
-                                        ),
-                                      ),
-                                    ).animate().fadeIn(delay: 490.ms).slideX(begin: -0.2),
-                                    const SizedBox(height: 20),
-                                ],
-                              ],
-                              _GlassTextField(
-                                controller: _password,
-                                label: 'Mot de passe',
-                                icon: Icons.lock_outline,
-                                obscureText: !_showPassword,
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _showPassword
-                                        ? Icons.visibility_off
-                                        : Icons.visibility,
-                                    color: Colors.black45,
-                                  ),
-                                  onPressed: () => setState(
-                                      () => _showPassword = !_showPassword),
-                                ),
-                                validator: (v) => (v?.length ?? 0) < 6
-                                    ? 'Minimum 6 caractères'
-                                    : null,
-                              )
-                                  .animate()
-                                  .fadeIn(delay: 500.ms)
-                                  .slideX(begin: 0.2),
-                              if (!_isLogin) ...[
-                                const SizedBox(height: 20),
-                                _GlassTextField(
-                                  controller: _confirmPassword,
-                                  label: 'Confirmer',
-                                  icon: Icons.verified_user_outlined,
-                                  obscureText: !_showPassword,
-                                  validator: (v) => v != _password.text
-                                      ? 'Mots de passe différents'
-                                      : null,
-                                )
-                                    .animate()
-                                    .fadeIn(delay: 550.ms)
-                                    .slideX(begin: 0.2),
-                              ],
-                              const SizedBox(height: 32),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 56,
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF10B981),
-                                    foregroundColor: Colors.white,
-                                    elevation: 8,
-                                    shadowColor:
-                                        const Color(0xFF10B981).withValues(alpha:0.5),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                  ),
-                                  onPressed: _submit,
-                                  child: Text(
-                                    _isLogin ? 'CONNEXION' : 'S\'INSCRIRE',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 1.5,
-                                    ),
-                                  ),
-                                ),
-                              )
-                                  .animate()
-                                  .fadeIn(delay: 600.ms)
-                                  .scale(begin: const Offset(0.8, 0.8)),
-                              const SizedBox(height: 24),
-                              Wrap(
-                                alignment: WrapAlignment.center,
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                children: [
-                                  Text(
-                                    _isLogin
-                                        ? 'Pas encore de compte ?'
-                                        : 'Déjà inscrit ?',
-                                    style: TextStyle(
-                                        color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha:0.6)),
-                                  ),
-                                  TextButton(
-                                    onPressed: () =>
-                                        setState(() => _isLogin = !_isLogin),
-                                    child: Text(
-                                      _isLogin ? 'Créer un compte' : 'Connexion',
-                                      style: const TextStyle(
-                                          color: Color(0xFF6366F1),
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                  ),
-                                ],
-                              ).animate().fadeIn(delay: 700.ms),
-                              if (_isLogin)
-                                TextButton(
-                                  onPressed: () {
-                                    _email.text = 'demo@campus.edu';
-                                    _password.text = 'demo1234';
-                                    _submit();
-                                  },
-                                  child: Text(
-                                    'Mode Démo',
-                                    style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
-                                  ),
-                                ).animate().fadeIn(delay: 800.ms),
-
-                              if (_isBioAvailable) ...[
-                                const SizedBox(height: 24),
-                                Row(
-                                  children: [
-                                    Expanded(child: Divider(color: Colors.grey.withValues(alpha:0.3))),
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                                      child: Text(
-                                        'OU',
-                                        style: TextStyle(color: Colors.grey.withValues(alpha:0.5), fontSize: 12),
-                                      ),
-                                    ),
-                                    Expanded(child: Divider(color: Colors.grey.withValues(alpha:0.3))),
-                                  ],
-                                ),
-                                const SizedBox(height: 24),
-                                IconButton(
-                                  onPressed: _handleBiometricLogin,
-                                  icon: const Icon(Icons.fingerprint, color: Color(0xFF10B981), size: 42),
-                                  style: IconButton.styleFrom(
-                                    backgroundColor: const Color(0xFF10B981).withValues(alpha:0.1),
-                                    padding: const EdgeInsets.all(16),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20),
-                                      side: BorderSide(color: const Color(0xFF10B981).withValues(alpha:0.2)),
-                                    )
-                                  ),
-                                ).animate().scale(delay: 500.ms),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Connexion biométrique',
-                                  style: GoogleFonts.outfit(color: Colors.grey.withValues(alpha:0.7), fontSize: 12),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                    ),
-                  ),
-                ),
-                      ),
-                    ),
-                  );
-            },
-          ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class MoyenneHomePage extends StatefulWidget {
   const MoyenneHomePage({
     super.key,
     required this.userName,
+    this.userDisplayName = '',
     this.userRole = 'Enseignant',
     this.userLevel = 'Primaire',
     required this.onLogout,
+    this.onProfileUpdate,
   });
 
   final String userName;
+  final String userDisplayName;
   final String userRole;
   final String userLevel;
   final VoidCallback onLogout;
+  final Function(String)? onProfileUpdate;
 
   @override
   State<MoyenneHomePage> createState() => _MoyenneHomePageState();
@@ -663,6 +261,8 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
   @override
   void initState() {
     super.initState();
+    // Automatiquement sélectionner le niveau de l'utilisateur
+    _selectedLevel = widget.userLevel;
     _initializeDatabase();
   }
 
@@ -785,7 +385,9 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
 
   /// Sauvegarde les étudiants dans la base de données
   Future<void> _saveClassToDatabase(List<StudentGrade> students) async {
-    if (_currentClassId == null) {
+    setState(() => _isLoading = true);
+    try {
+      if (_currentClassId == null) {
       // Créer une nouvelle classe si nécessaire
       final levels = await _databaseService.getAllLevels();
       final levelName = _selectedLevel ?? widget.userLevel;
@@ -835,6 +437,54 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
     
     // Recharger les données
     await _loadClassData(_currentClassId!);
+    } catch (e) {
+      print('Erreur sauvegarde base: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _navigateToManualEntry() async {
+    setState(() => _isLoading = true);
+    try {
+      final levelName = _selectedLevel ?? widget.userLevel;
+      
+      // Récupérer le level_id
+      final levels = await _databaseService.getAllLevels();
+      final level = levels.firstWhere(
+        (l) => l['name'] == levelName,
+        orElse: () => {},
+      );
+      
+      if (level.isEmpty) return;
+      final levelId = level['id'] as int;
+      
+      // Récupérer les matières
+      final subjectsData = await _databaseService.getSubjectsByLevel(levelId);
+      final subjects = subjectsData.map((s) => s['name'] as String).toList();
+      
+      if (!mounted) return;
+      
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (ctx) => ManualEntryPage(
+            selectedLevel: levelName,
+            classGrades: _classGrades,
+            subjects: subjects,
+            onStudentsUpdated: (students) async {
+              _gradeService.calculateAverages(students);
+              _gradeService.rankStudents(students);
+              await _saveClassToDatabase(students);
+            },
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Erreur navigation saisie: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   // Ancien thème dynamique (non utilisé dans le nouveau dashboard).
@@ -1138,204 +788,243 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
         
         await SystemNavigator.pop();
       },
-      child: Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9), // Light grey background
-      drawer: _buildDrawer(), // Added Drawer
-      body: SafeArea(
-        child: _selectedLevel == null
-            ? Stack(children: [const _AnimatedBackground(), _buildLevelSelection()])
-            : Column(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isLargeScreen = constraints.maxWidth >= 900;
+          
+          return Scaffold(
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            drawer: isLargeScreen ? null : _buildDrawer(),
+            body: SafeArea(
+              child: Stack(
                 children: [
-                   _buildAdminHeader(),
-                   Expanded(
-                     child: Padding(
-                       padding: const EdgeInsets.all(24),
-                       child: Column(
-                         crossAxisAlignment: CrossAxisAlignment.start,
-                         children: [
-                           _buildAdminActions(),
-                           const SizedBox(height: 24),
-                           Expanded(child: _buildSplitView()),
-                         ],
-                       ),
-                     ),
-                   ),
-                   _buildAdminFooter(),
+                  Row(
+                    children: [
+                      if (isLargeScreen)
+                        _buildSidebar(),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            _buildAdminHeader(!isLargeScreen),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildAdminActions(),
+                                    const SizedBox(height: 24),
+                                    Expanded(child: _buildSplitView()),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            _buildAdminFooter(),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_isLoading)
+                    Container(
+                      color: Colors.black.withValues(alpha:0.3),
+                      child: const Center(
+                        child: CircularProgressIndicator(color: Color(0xFF10B981)),
+                      ),
+                    ),
                 ],
               ),
+            ),
+          );
+        }
       ),
+    );
+  }
+
+  Widget _buildSidebar() {
+    final theme = Theme.of(context);
+    return Container(
+      width: 280,
+      decoration: BoxDecoration(
+        color: theme.drawerTheme.backgroundColor ?? theme.scaffoldBackgroundColor,
+        border: Border(right: BorderSide(color: theme.dividerColor.withValues(alpha: 0.1))),
       ),
+      child: _buildMenuContent(false),
     );
   }
 
   Widget _buildDrawer() {
+    final theme = Theme.of(context);
     return Drawer(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.drawerTheme.backgroundColor ?? theme.scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.horizontal(right: Radius.circular(20)),
       ),
-      child: Column(
-        children: [
-          UserAccountsDrawerHeader(
-            decoration: const BoxDecoration(
-              color: Color(0xFF10B981),
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
-            ),
-            accountName: Text(
-              widget.userName, 
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-            accountEmail: Text(
-              '${widget.userRole} - ${widget.userLevel}',
-              style: TextStyle(color: Colors.white.withValues(alpha:0.9)),
-            ),
-            currentAccountPicture: CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Text(
-                widget.userName.substring(0, 1).toUpperCase(),
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
-              ),
-            ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              children: [
-                _DrawerItem(
-                  icon: Icons.dashboard_rounded,
-                  text: 'Tableau de bord',
-                  isActive: true,
-                  onTap: () => Navigator.pop(context),
-                ),
-                _DrawerItem(
-                  icon: Icons.history_rounded,
-                  text: 'Historique',
-                  onTap: () {
-                     Navigator.pop(context);
-                     Navigator.push(context, MaterialPageRoute(builder: (c) => const HistoryPage()));
-                  },
-                ),
-                _DrawerItem(
-                  icon: Icons.swap_horiz,
-                  text: 'Changer de niveau',
-                  onTap: () {
-                     Navigator.pop(context); // Close Drawer
-                     setState(() => _selectedLevel = null);
-                  },
-                ),
-                if (widget.userRole == 'Enseignant') ...[
-                   const Divider(indent: 20, endIndent: 20),
-                   Padding(
-                     padding: const EdgeInsets.only(left: 20, top: 10, bottom: 5),
-                     child: Text('MA CLASSE (${widget.userLevel})', style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
-                   ),
-                   _DrawerItem(
-                     icon: Icons.class_outlined,
-                     text: 'Gestion de classe',
-                     onTap: () {
-                       Navigator.pop(context);
-                       Navigator.push(
-                         context,
-                         MaterialPageRoute(
-                           builder: (ctx) => ManualEntryPage(
-                             selectedLevel: _selectedLevel ?? 'Lycée', // Default fallback
-                             classGrades: _classGrades,
-                             onStudentsUpdated: (students) async {
-                               _gradeService.calculateAverages(students);
-                               _gradeService.rankStudents(students);
-                               await _saveClassToDatabase(students);
-                             },
-                           ),
-                         ),
-                       );
-                     },
-                   ),
-                   _DrawerItem(
-                     icon: Icons.edit_note,
-                     text: 'Saisie des notes',
-                     onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                         context,
-                         MaterialPageRoute(
-                           builder: (ctx) => ManualEntryPage(
-                             selectedLevel: _selectedLevel ?? 'Lycée',
-                             classGrades: _classGrades,
-                             onStudentsUpdated: (students) async {
-                               _gradeService.calculateAverages(students);
-                               _gradeService.rankStudents(students);
-                               await _saveClassToDatabase(students);
-                             },
-                           ),
-                         ),
-                       );
-                     },
-                   ),
-                ] else if (widget.userRole == 'Directeur de programme') ...[
-                   const Divider(indent: 20, endIndent: 20),
-                   const Padding(
-                     padding: EdgeInsets.only(left: 20, top: 10, bottom: 5),
-                     child: Text('ADMINISTRATION', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
-                   ),
-                   _DrawerItem(
-                     icon: Icons.analytics_outlined,
-                     text: 'Vue Globale',
-                     onTap: () {
-                       Navigator.pop(context);
-                       Navigator.push(context, MaterialPageRoute(builder: (c) => const ComingSoonPage(title: 'Vue Globale')));
-                     },
-                   ),
-                   _DrawerItem(
-                     icon: Icons.people_outline,
-                     text: 'Gestion Enseignants',
-                     onTap: () {
-                       Navigator.pop(context);
-                       Navigator.push(context, MaterialPageRoute(builder: (c) => const ComingSoonPage(title: 'Gestion Enseignants')));
-                     },
-                   ),
-                ],
-                const Divider(indent: 20, endIndent: 20),
-                _DrawerItem(
-                  icon: Icons.settings_outlined,
-                  text: 'Paramètres',
-                  onTap: () {
-                    Navigator.pop(context); // Close Drawer
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const SettingsPage()),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-          Container(
-             padding: const EdgeInsets.all(20),
-             child: InkWell(
-               onTap: widget.onLogout,
-               borderRadius: BorderRadius.circular(12),
-               child: Container(
-                 padding: const EdgeInsets.all(12),
-                 decoration: BoxDecoration(
-                   color: Colors.red.withValues(alpha:0.1),
-                   borderRadius: BorderRadius.circular(12),
-                 ),
-                 child: Row(
-                   children: [
-                     Icon(Icons.logout_rounded, color: Colors.red[400]),
-                     const SizedBox(width: 12),
-                     Text('Déconnexion', style: TextStyle(color: Colors.red[400], fontWeight: FontWeight.bold)),
-                   ],
-                 ),
-               ),
-             ),
-          ),
-        ],
-      ),
+      child: _buildMenuContent(true),
     );
   }
 
-  Widget _buildAdminHeader() {
+  Widget _buildMenuContent(bool isDrawer) {
+    final theme = Theme.of(context);
+    return Column(
+      children: [
+        UserAccountsDrawerHeader(
+          decoration: const BoxDecoration(
+            color: Color(0xFF10B981),
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+          ),
+          accountName: Text(
+            widget.userDisplayName.isNotEmpty ? widget.userDisplayName : widget.userName, 
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+          accountEmail: Text(
+            '${widget.userRole} - ${widget.userLevel}',
+            style: TextStyle(color: Colors.white.withValues(alpha:0.9)),
+          ),
+          currentAccountPicture: CircleAvatar(
+            backgroundColor: Colors.white,
+            child: Text(
+              (widget.userDisplayName.isNotEmpty ? widget.userDisplayName : widget.userName).substring(0, 1).toUpperCase(),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+            ),
+          ),
+        ),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            children: [
+              _DrawerItem(
+                icon: Icons.dashboard_rounded,
+                text: 'Tableau de bord',
+                isActive: true,
+                onTap: () {
+                  if (isDrawer) Navigator.pop(context);
+                },
+              ),
+              _DrawerItem(
+                icon: Icons.history_rounded,
+                text: 'Historique',
+                onTap: () {
+                   if (isDrawer) Navigator.pop(context);
+                   Navigator.push(context, MaterialPageRoute(builder: (c) => const HistoryPage()));
+                },
+              ),
+              if (widget.userRole == 'Enseignant') ...[
+                 const Divider(indent: 20, endIndent: 20),
+                 Padding(
+                   padding: const EdgeInsets.only(left: 20, top: 10, bottom: 5),
+                   child: Text('MA CLASSE (${widget.userLevel})', style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
+                 ),
+                 _DrawerItem(
+                   icon: Icons.class_outlined,
+                   text: 'Gestion de classe',
+                   onTap: () {
+                     if (isDrawer) Navigator.pop(context);
+                     _navigateToManualEntry();
+                   },
+                 ),
+                 _DrawerItem(
+                   icon: Icons.edit_note,
+                   text: 'Saisie des notes',
+                   onTap: () {
+                      if (isDrawer) Navigator.pop(context);
+                      _navigateToManualEntry();
+                   },
+                 ),
+              ] else if (widget.userRole == 'Directeur de programme') ...[
+                 const Divider(indent: 20, endIndent: 20),
+                 const Padding(
+                   padding: EdgeInsets.only(left: 20, top: 10, bottom: 5),
+                   child: Text('ADMINISTRATION', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
+                 ),
+                 _DrawerItem(
+                   icon: Icons.analytics_outlined,
+                   text: 'Vue Globale',
+                   onTap: () {
+                     if (isDrawer) Navigator.pop(context);
+                     Navigator.push(context, MaterialPageRoute(builder: (c) => const ComingSoonPage(title: 'Vue Globale')));
+                   },
+                 ),
+                 _DrawerItem(
+                   icon: Icons.people_outline,
+                   text: 'Gestion Enseignants',
+                   onTap: () {
+                     if (isDrawer) Navigator.pop(context);
+                     Navigator.push(context, MaterialPageRoute(builder: (c) => const ComingSoonPage(title: 'Gestion Enseignants')));
+                   },
+                 ),
+              ],
+              const Divider(indent: 20, endIndent: 20),
+              _DrawerItem(
+                icon: Icons.history_edu,
+                text: 'Historique Imports',
+                onTap: () {
+                  if (isDrawer) Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (c) => const ImportHistoryPage()));
+                },
+              ),
+              _DrawerItem(
+                icon: Icons.settings_outlined,
+                text: 'Paramètres',
+                onTap: () {
+                  if (isDrawer) Navigator.pop(context); // Close Drawer
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => SettingsPage(username: widget.userName)),
+                  );
+                  if (result != null && result is Map<String, String> && mounted) {
+                     if (widget.onProfileUpdate != null) {
+                       widget.onProfileUpdate!(result['name']!);
+                     }
+                  }
+                },
+              ),
+              const Divider(indent: 20, endIndent: 20),
+              _DrawerItem(
+                icon: Icons.mail_outline,
+                text: 'Nous contacter',
+                onTap: () {
+                  if (isDrawer) Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (c) => const ContactPage()));
+                },
+              ),
+              _DrawerItem(
+                icon: Icons.info_outline,
+                text: 'À propos',
+                onTap: () {
+                  if (isDrawer) Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (c) => const AboutPage()));
+                },
+              ),
+            ],
+          ),
+        ),
+        Container(
+           padding: const EdgeInsets.all(20),
+           child: InkWell(
+             onTap: widget.onLogout,
+             borderRadius: BorderRadius.circular(12),
+             child: Container(
+               padding: const EdgeInsets.all(12),
+               decoration: BoxDecoration(
+                 color: Colors.red.withValues(alpha:0.1),
+                 borderRadius: BorderRadius.circular(12),
+               ),
+               child: Row(
+                 children: [
+                   Icon(Icons.logout_rounded, color: Colors.red[400]),
+                   const SizedBox(width: 12),
+                   Text('Déconnexion', style: TextStyle(color: Colors.red[400], fontWeight: FontWeight.bold)),
+                 ],
+               ),
+             ),
+           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAdminHeader(bool showMenuIcon) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -1351,13 +1040,14 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
       ),
       child: Row(
         children: [
-          Builder(
-            builder: (context) => IconButton(
-              onPressed: () => Scaffold.of(context).openDrawer(),
-              icon: const Icon(Icons.menu, color: Colors.white),
+          if (showMenuIcon)
+            Builder(
+              builder: (context) => IconButton(
+                onPressed: () => Scaffold.of(context).openDrawer(),
+                icon: const Icon(Icons.menu, color: Colors.white),
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
+          if (showMenuIcon) const SizedBox(width: 8),
           Expanded(
             child: Text(
               'CALCUL MOYENNE CLASSE',
@@ -1426,31 +1116,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
               icon: Icons.edit_note_rounded,
               color: const Color(0xFF10B981),
               isFilled: true,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (ctx) => ManualEntryPage(
-                      selectedLevel: _selectedLevel ?? '',
-                      classGrades: _classGrades,
-                      onStudentsUpdated: (students) async {
-                        _gradeService.calculateAverages(students);
-                        _gradeService.rankStudents(students);
-                        await _saveClassToDatabase(students);
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Données sauvegardées avec succès !'),
-                              backgroundColor: Color(0xFF4ADE80),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                  ),
-                );
-              },
+              onTap: _navigateToManualEntry,
             ),
           ),
           SizedBox(width: isMobile ? 0 : 16, height: isMobile ? 16 : 0),
@@ -1523,13 +1189,14 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
     required bool isFilled,
     required VoidCallback onTap,
   }) {
+    final theme = Theme.of(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
         decoration: BoxDecoration(
-          color: isFilled ? color : Colors.white,
+          color: isFilled ? color : theme.cardTheme.color,
           borderRadius: BorderRadius.circular(16),
           border: isFilled ? null : Border.all(color: color.withValues(alpha:0.5), width: 2),
           boxShadow: [
@@ -1557,14 +1224,14 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
                 Text(
                   title,
                   style: GoogleFonts.outfit(
-                      color: isFilled ? Colors.white : Colors.black87,
+                      color: isFilled ? Colors.white : theme.textTheme.bodyLarge?.color,
                       fontSize: 16,
                       fontWeight: FontWeight.bold),
                 ),
                 Text(
                   subtitle,
                   style: GoogleFonts.outfit(
-                      color: isFilled ? Colors.white.withValues(alpha:0.8) : Colors.grey,
+                      color: isFilled ? Colors.white.withValues(alpha:0.8) : theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
                       fontSize: 12),
                 ),
               ],
@@ -1579,12 +1246,13 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
   }
 
   Widget _buildBadge(String text, Color color, bool filled) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: filled ? color : Colors.white,
+        color: filled ? color : theme.cardTheme.color,
         borderRadius: BorderRadius.circular(4),
-        border: filled ? null : Border.all(color: Colors.grey.withValues(alpha:0.3)),
+        border: filled ? null : Border.all(color: theme.dividerColor.withValues(alpha:0.3)),
       ),
       child: Text(
         text,
@@ -1704,7 +1372,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
   Widget _buildStatCard(String title, String value, IconData icon, Color color) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
       ),
@@ -1717,7 +1385,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
             children: [
               Icon(icon, color: color, size: 20),
               const SizedBox(width: 8),
-              Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.bold)),
+              Text(title, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6), fontSize: 13, fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 8),
@@ -1747,13 +1415,13 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
       height: 300,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
       ),
       child: Column(
         children: [
-          const Text('Distribution des Notes', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Text('Distribution des Notes', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).textTheme.bodyLarge?.color)),
           const SizedBox(height: 20),
           Expanded(
             child: PieChart(
@@ -1801,8 +1469,8 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: const EdgeInsets.all(24),
@@ -1880,7 +1548,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface,
                 shape: BoxShape.circle,
                 boxShadow: [
                    BoxShadow(color: color.withValues(alpha:0.2), blurRadius: 10, offset: const Offset(0, 4))
@@ -1893,8 +1561,8 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
-                  Text(subtitle, style: GoogleFonts.outfit(color: Colors.grey, fontSize: 13)),
+                  Text(title, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).textTheme.bodyLarge?.color)),
+                  Text(subtitle, style: GoogleFonts.outfit(color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.6), fontSize: 13)),
                 ],
               ),
             ),
@@ -1930,9 +1598,9 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).cardTheme.color,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+            boxShadow: Theme.of(context).brightness == Brightness.dark ? [] : const [BoxShadow(color: Colors.black12, blurRadius: 4)],
           ),
           child: Column(
             children: [
@@ -1943,12 +1611,13 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
                   prefixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.withValues(alpha:0.3)),
+                    borderSide: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha:0.1)),
                   ),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                   filled: true,
-                  fillColor: Colors.grey.withValues(alpha:0.05),
+                  fillColor: Theme.of(context).brightness == Brightness.dark ? Colors.black.withValues(alpha: 0.2) : Colors.grey.withValues(alpha:0.05),
                 ),
+                style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
                 onChanged: (v) => setState(() => _searchQuery = v),
               ),
               const SizedBox(height: 12),
@@ -1972,7 +1641,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
         // 3. Data Table
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
             boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
           ),
@@ -2129,7 +1798,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
       ),
@@ -2200,105 +1869,6 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
     );
   }
 
-  Widget _buildLevelSelection() {
-    return Center(
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 600),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Welcome Header
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [const Color(0xFF10B981), const Color(0xFF059669)],
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(color: const Color(0xFF10B981).withValues(alpha:0.3), blurRadius: 20, offset: const Offset(0, 10))
-                  ]
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha:0.2), shape: BoxShape.circle),
-                      child: const Icon(Icons.school, size: 40, color: Colors.white),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Bienvenue, ${widget.userName}',
-                      style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                    ),
-                    
-                    if (widget.userName.isEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        'Sélectionnez votre niveau',
-                        style: GoogleFonts.outfit(color: Colors.white.withValues(alpha:0.9), fontSize: 16),
-                      ),
-                    ],
-
-                    const SizedBox(height: 24),
-                    Text(
-                      'Sélectionnez votre espace de travail',
-                      style: GoogleFonts.outfit(color: Colors.white.withValues(alpha:0.9), fontSize: 16),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ).animate().fadeIn().slideY(begin: -0.2),
-              
-              const SizedBox(height: 48),
-              
-              Text(
-                'NIVEAUX ACADÉMIQUES',
-                style: GoogleFonts.outfit(color: Colors.grey[600], fontWeight: FontWeight.bold, letterSpacing: 1.2, fontSize: 13),
-                textAlign: TextAlign.center,
-              ).animate().fadeIn(delay: 200.ms),
-              
-              const SizedBox(height: 24),
-              
-              _LevelCard(
-                title: 'PRIMAIRE',
-                subtitle: 'Classes CP à CM2',
-                icon: Icons.backpack_outlined,
-                color: Colors.orangeAccent,
-                onTap: () => _onLevelSelected('Primaire'),
-              ).animate().fadeIn(delay: 300.ms).slideX(),
-              
-              const SizedBox(height: 16),
-              
-              _LevelCard(
-                title: 'COLLÈGE',
-                subtitle: 'Classes 6ème à 3ème',
-                icon: Icons.menu_book_rounded,
-                color: Colors.blueAccent,
-                onTap: () => _onLevelSelected('Collège'),
-              ).animate().fadeIn(delay: 400.ms).slideX(),
-              
-              const SizedBox(height: 16),
-              
-              _LevelCard(
-                title: 'LYCÉE',
-                subtitle: 'Seconde à Terminale',
-                icon: Icons.architecture_rounded,
-                color: Colors.purpleAccent,
-                onTap: () => _onLevelSelected('Lycée'),
-              ).animate().fadeIn(delay: 500.ms).slideX(),
-              
-              const SizedBox(height: 40),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildHeader() {
     return Column(
@@ -2397,31 +1967,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
                 title: 'Saisie manuelle',
                 subtitle: 'Ajouter les élèves et notes',
                 color: const Color(0xFF6366F1),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (ctx) => ManualEntryPage(
-                        selectedLevel: _selectedLevel ?? '',
-                        classGrades: _classGrades,
-                        onStudentsUpdated: (students) async {
-                          _gradeService.calculateAverages(students);
-                          _gradeService.rankStudents(students);
-                          await _saveClassToDatabase(students);
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Données sauvegardées avec succès !'),
-                                backgroundColor: Color(0xFF4ADE80),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                    ),
-                  );
-                },
+                onTap: _navigateToManualEntry,
               ),
             ),
             const SizedBox(width: 12),
@@ -2486,15 +2032,6 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
   /// Appelé après le choix d'un niveau (Primaire / Collège / Lycée)
   /// pour demander à l'utilisateur s'il veut saisir les notes manuellement
   /// ou téléverser un fichier de classe.
-  Future<void> _onLevelSelected(String level) async {
-    setState(() {
-      _selectedLevel = level;
-      _entryMode = null;
-    });
-    // Charger les classes pour ce niveau depuis la base de données
-    await _loadClassesForLevel(level);
-    // _showDataEntryChoice(); // Removed to use new Dashboard buttons
-  }
 
   // ---- Ancien dashboard "Perso" (désactivé) ----
   /*
@@ -2970,82 +2507,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
     ).animate().fadeIn(delay: 500.ms);
   }
 
-  Widget _buildAddForm() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.withValues(alpha:0.1)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha:0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          )
-        ],
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: _GlassTextField(
-                    controller: _niveauController,
-                    label: 'Niveau',
-                    icon: Icons.school,
-                    validator: (v) => v?.isEmpty == true ? 'Requis' : null,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _GlassTextField(
-                    controller: _matiereController,
-                    label: 'Matière',
-                    icon: Icons.subject,
-                    validator: (v) => v?.isEmpty == true ? 'Requis' : null,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6366F1), // Indigo
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-                onPressed: () => showDialog(
-                  context: context,
-                  builder: (ctx) => _AddNoteDialog(
-                    selectedLevel: _selectedLevel,
-                    onAdd: (n, m, score) {
-                       setState(() {
-                         final existent = _notes.firstWhere((x) => x.niveau == n && x.matiere == m, orElse: () {
-                           final newItem = NoteItem(niveau: n, matiere: m, notes: []);
-                           _notes.add(newItem);
-                           return newItem;
-                         });
-                         existent.notes.add(score);
-                         _recalculer();
-                       });
-                    },
-                  ),
-                ),
-                icon: const Icon(Icons.add),
-                label: const Text('Ajouter une matière/note'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ).animate().fadeIn(delay: 600.ms);
-  }
+
 
   Widget _buildNotesList() {
     if (_notesFiltrees.isEmpty) {
@@ -3104,13 +2566,16 @@ class _NoteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.withValues(alpha:0.1)),
-        boxShadow: [
+        border: Border.all(color: theme.dividerColor.withValues(alpha:0.1)),
+        boxShadow: isDark ? [] : [
            BoxShadow(
             color: Colors.black.withValues(alpha:0.05),
             blurRadius: 10,
@@ -3146,8 +2611,8 @@ class _NoteCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     item.matiere,
-                    style: const TextStyle(
-                      color: Color(0xFF1E293B),
+                    style: TextStyle(
+                      color: theme.textTheme.bodyLarge?.color,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -3158,10 +2623,10 @@ class _NoteCard extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: theme.cardTheme.color,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.withValues(alpha:0.1)),
-                  boxShadow: [
+                  border: Border.all(color: theme.dividerColor.withValues(alpha:0.1)),
+                  boxShadow: isDark ? [] : [
                     BoxShadow(
                       color: Colors.black.withValues(alpha:0.05),
                       blurRadius: 5,
@@ -3186,9 +2651,9 @@ class _NoteCard extends StatelessWidget {
             children: [
               ...item.notes.map((n) => Chip(
                     label: Text(n.toStringAsFixed(1)),
-                    backgroundColor: Colors.white,
-                    labelStyle: const TextStyle(color: Color(0xFF1E293B)),
-                    side: BorderSide(color: Colors.grey.withValues(alpha:0.2)),
+                    backgroundColor: theme.cardTheme.color,
+                    labelStyle: TextStyle(color: theme.textTheme.bodyLarge?.color),
+                    side: BorderSide(color: theme.dividerColor.withValues(alpha:0.2)),
                     padding: EdgeInsets.zero,
                   )),
               IconButton.filled(
@@ -3360,160 +2825,7 @@ class NoteItem {
 
 // --- Reusable Components ---
 
-class _AnimatedBackground extends StatelessWidget {
-  const _AnimatedBackground();
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFFF8FAFC), // Slate 50 (White-ish)
-      child: Stack(
-        children: [
-          // Moving Blobs (Pastel/Lighter for white bg)
-          Positioned(
-            top: -100,
-            left: -100,
-            child: Container(
-              width: 500,
-              height: 500,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFF6366F1).withValues(alpha:0.2), // Lighter Indigo
-                    Colors.transparent
-                  ],
-                ),
-              ),
-            ),
-          )
-              .animate(onPlay: (c) => c.repeat(reverse: true))
-              .scale(
-                  begin: const Offset(1, 1),
-                  end: const Offset(1.5, 1.5),
-                  duration: 6.seconds)
-              .rotate(begin: 0, end: 0.2, duration: 7.seconds),
-
-          Positioned(
-            bottom: -150,
-            right: -50,
-            child: Container(
-              width: 400,
-              height: 400,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFFEC4899).withValues(alpha:0.2), // Lighter Pink
-                    Colors.transparent
-                  ],
-                ),
-              ),
-            ),
-          )
-              .animate(onPlay: (c) => c.repeat(reverse: true))
-              .slide(
-                  begin: const Offset(0, 0.2),
-                  end: const Offset(0.2, -0.2),
-                  duration: 8.seconds)
-              .scale(begin: const Offset(0.8, 0.8), end: const Offset(1.2, 1.2)),
-
-          Positioned(
-            top: 200,
-            right: -100,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFF06B6D4).withValues(alpha:0.15), // Lighter Cyan
-                    Colors.transparent
-                  ],
-                ),
-              ),
-            ),
-          )
-              .animate(onPlay: (c) => c.repeat(reverse: true))
-              .slideX(begin: 0.1, end: -0.1, duration: 10.seconds)
-              .rotate(begin: 0, end: -0.1),
-
-          // Glass Overlay (Blur)
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
-            child: Container(
-              color: Colors.white.withValues(alpha:0.1), // Very light overlay
-            ),
-          ),
-          
-           // Mesh Noise (Optional subtle texture - Darker noise for white bg)
-           Container(
-             decoration: BoxDecoration(
-               gradient: LinearGradient(
-                 begin: Alignment.topLeft,
-                 end: Alignment.bottomRight,
-                 colors: [
-                   Colors.black.withValues(alpha:0.01),
-                   Colors.transparent,
-                   Colors.black.withValues(alpha:0.01),
-                 ],
-               ),
-             ),
-           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GlassTextField extends StatelessWidget {
-  const _GlassTextField({
-    required this.controller,
-    required this.label,
-    required this.icon,
-    this.obscureText = false,
-    this.validator,
-    this.suffixIcon,
-  });
-
-  final TextEditingController controller;
-  final String label;
-  final IconData icon;
-  final bool obscureText;
-  final String? Function(String?)? validator;
-  final Widget? suffixIcon;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      obscureText: obscureText,
-      style: const TextStyle(color: Color(0xFF1E293B)), // Dark Text
-      validator: validator,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: const Color(0xFF1E293B).withValues(alpha:0.6)),
-        prefixIcon: Icon(icon, color: const Color(0xFF1E293B).withValues(alpha:0.6)),
-        suffixIcon: suffixIcon,
-        filled: true,
-        fillColor: Colors.white.withValues(alpha:0.5), // Lighter fill
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: const Color(0xFF1E293B).withValues(alpha:0.1)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF6366F1)),
-        ),
-      ),
-    );
-  }
-}
 
 class _StatCard extends StatelessWidget {
   const _StatCard({
@@ -3624,28 +2936,31 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
-          duration: 300.ms,
+          duration: const Duration(milliseconds: 300),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
             color: selected
                 ? const Color(0xFF6366F1)
-                : Colors.white,
+                : theme.cardTheme.color,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: selected ? Colors.transparent : const Color(0xFF1E293B).withValues(alpha:0.1),
+              color: selected ? Colors.transparent : theme.dividerColor.withValues(alpha:0.1),
             ),
-             boxShadow: selected ? [] : [BoxShadow(color: Colors.black.withValues(alpha:0.03), blurRadius: 5)],
+             boxShadow: selected || isDark ? [] : [BoxShadow(color: Colors.black.withValues(alpha:0.03), blurRadius: 5)],
           ),
           child: Center(
             child: Text(
               label,
               style: TextStyle(
-                color: selected ? Colors.white : const Color(0xFF1E293B).withValues(alpha:0.7),
+                color: selected ? Colors.white : theme.textTheme.bodyLarge?.color?.withValues(alpha: 0.7),
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -3673,12 +2988,15 @@ class _LevelCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.grey.withValues(alpha:0.1)),
-        boxShadow: [
+        border: Border.all(color: theme.dividerColor.withValues(alpha:0.1)),
+        boxShadow: isDark ? [] : [
           BoxShadow(
             color: Colors.black.withValues(alpha:0.05),
             blurRadius: 20,
@@ -3710,8 +3028,8 @@ class _LevelCard extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
-                          color: Color(0xFF1E293B),
+                        style: TextStyle(
+                          color: theme.textTheme.bodyLarge?.color,
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
@@ -3720,7 +3038,7 @@ class _LevelCard extends StatelessWidget {
                       Text(
                         subtitle,
                         style: TextStyle(
-                          color: const Color(0xFF1E293B).withValues(alpha:0.5),
+                          color: theme.textTheme.bodyMedium?.color?.withValues(alpha:0.5),
                           fontSize: 14,
                         ),
                       ),
@@ -3729,7 +3047,7 @@ class _LevelCard extends StatelessWidget {
                 ),
                 Icon(
                   Icons.arrow_forward_ios_rounded,
-                  color: const Color(0xFF1E293B).withValues(alpha:0.3),
+                  color: theme.textTheme.bodySmall?.color?.withValues(alpha:0.3),
                   size: 20,
                 ),
               ],
@@ -3755,15 +3073,17 @@ class _PremiumActionCard extends StatelessWidget {
   final String subtitle;
   final Color color;
   final VoidCallback onTap;
-
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.grey.withValues(alpha:0.1)),
-        boxShadow: [
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1)),
+        boxShadow: isDark ? [] : [
           BoxShadow(
             color: color.withValues(alpha:0.15),
             blurRadius: 20,
@@ -3793,8 +3113,8 @@ class _PremiumActionCard extends StatelessWidget {
                 Text(
                   title,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Color(0xFF1E293B),
+                  style: TextStyle(
+                    color: theme.textTheme.bodyLarge?.color,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -3804,7 +3124,7 @@ class _PremiumActionCard extends StatelessWidget {
                   subtitle,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: const Color(0xFF1E293B).withValues(alpha:0.5),
+                    color: theme.textTheme.bodyMedium?.color?.withValues(alpha:0.5),
                     fontSize: 12,
                   ),
                 ),
@@ -3830,7 +3150,7 @@ class _LegendItem extends StatelessWidget {
       children: [
         Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 4),
-        Text(text, style: const TextStyle(fontSize: 12)),
+        Text(text, style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color)),
       ],
     );
   }
@@ -3852,12 +3172,13 @@ class _DrawerItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return ListTile(
-      leading: Icon(icon, color: isActive ? const Color(0xFF10B981) : Colors.grey[600]),
+      leading: Icon(icon, color: isActive ? const Color(0xFF10B981) : theme.hintColor),
       title: Text(
         text,
         style: TextStyle(
-          color: isActive ? const Color(0xFF10B981) : Colors.grey[800],
+          color: isActive ? const Color(0xFF10B981) : theme.textTheme.bodyLarge?.color,
           fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
         ),
       ),

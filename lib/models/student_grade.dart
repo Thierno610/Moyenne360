@@ -2,13 +2,16 @@ class StudentGrade {
   final String name;
   final Map<String, double> grades; // Key: Subject, Value: Grade
   double? average;
-  int rank;
+  String? mention;
+  int? rank;
+
 
   StudentGrade({
     required this.name,
     required this.grades,
     this.average,
-    this.rank = 0,
+    this.rank,
+    this.mention,
   });
 
   Map<String, dynamic> toJson() {
@@ -17,6 +20,7 @@ class StudentGrade {
       'grades': grades,
       'average': average,
       'rank': rank,
+      'mention': mention,
     };
   }
 
@@ -26,6 +30,7 @@ class StudentGrade {
       grades: Map<String, double>.from(json['grades']),
       average: json['average'],
       rank: json['rank'] ?? 0,
+      mention: json['mention'],
     );
   }
 }

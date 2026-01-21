@@ -6,14 +6,18 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:moyenne_auto/models/student_grade.dart';
 import 'package:moyenne_auto/services/grade_service.dart';
 
+import 'package:moyenne_auto/services/database_service.dart';
+
 class FileUploadPage extends StatefulWidget {
   const FileUploadPage({
     super.key,
     required this.selectedLevel,
     required this.onFileImported,
+    this.initialFile,
   });
 
   final String selectedLevel;
+  final File? initialFile;
   final void Function(List<StudentGrade>, double?) onFileImported;
 
   @override
@@ -22,12 +26,55 @@ class FileUploadPage extends StatefulWidget {
 
 class _FileUploadPageState extends State<FileUploadPage> {
   final _gradeService = GradeService();
+  final _databaseService = DatabaseService();
   bool _isLoading = false;
   String? _fileName;
   
   // Review State
   bool _isReviewing = false;
   List<StudentGrade> _previewStudents = [];
+  String? _currentFilePath;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialFile != null) {
+      _processFile(widget.initialFile!);
+    }
+  }
+
+  Future<void> _processFile(File file) async {
+    setState(() => _isLoading = true);
+
+    try {
+      final students = await _gradeService.parseFile(file);
+
+      if (students.isEmpty) throw Exception('Aucun étudiant trouvé dans le fichier.');
+
+      _gradeService.calculateAverages(students);
+      _gradeService.rankStudents(students);
+
+      setState(() {
+        _fileName = file.path.split(Platform.pathSeparator).last;
+        _currentFilePath = file.path;
+        _previewStudents = students;
+        _isReviewing = true;
+        _isLoading = false;
+      });
+
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: $e'),
+            backgroundColor: const Color(0xFFF87171),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
 
   Future<void> _pickFile() async {
     setState(() => _isLoading = true);
@@ -50,38 +97,27 @@ class _FileUploadPageState extends State<FileUploadPage> {
         throw Exception("Impossible d'accéder au fichier (chemin null).");
       }
 
-      final file = File(path);
-      final students = await _gradeService.parseFile(file);
-
-      if (students.isEmpty) throw Exception('Aucun étudiant trouvé dans le fichier.');
-
-      _gradeService.calculateAverages(students);
-      _gradeService.rankStudents(students);
-
-      setState(() {
-        _fileName = platformFile.name;
-        _previewStudents = students;
-        _isReviewing = true;
-        _isLoading = false;
-      });
+      await _processFile(File(path));
 
     } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: $e'),
-            backgroundColor: const Color(0xFFF87171),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+       // Error handling already in _processFile or here for picker errors
+       setState(() => _isLoading = false);
     }
   }
 
   void _validateImport() {
     final classAvg = _gradeService.calculateClassAverage(_previewStudents);
     widget.onFileImported(_previewStudents, classAvg);
+    
+    // Save to history
+    if (_fileName != null && _currentFilePath != null) {
+      _databaseService.insertImportFile(
+        name: _fileName!,
+        path: _currentFilePath!,
+        level: widget.selectedLevel,
+        count: _previewStudents.length,
+      );
+    }
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -91,6 +127,24 @@ class _FileUploadPageState extends State<FileUploadPage> {
       ),
     );
     Navigator.pop(context);
+  }
+
+  Color _getMentionColor(String? mention) {
+    switch (mention) {
+      case 'Excellent':
+      case 'Très Bien':
+        return const Color(0xFF10B981); // Green
+      case 'Bien':
+      case 'Assez Bien':
+        return Colors.blue;
+      case 'Passable':
+        return Colors.orange;
+      case 'Insuffisant':
+      case 'Échec':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
   }
 
   void _editStudent(int index) {
@@ -333,47 +387,183 @@ class _FileUploadPageState extends State<FileUploadPage> {
             border: isDark ? Border.all(color: Colors.white.withValues(alpha:0.05)) : null,
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha:0.05), blurRadius: 10)],
           ),
-          child: Column(
+          child: Row(
             children: [
-              Text('Vérifiez les données', style: GoogleFonts.outfit(color: theme.textTheme.bodyLarge?.color, fontSize: 18, fontWeight: FontWeight.bold)),
-              Text('${_previewStudents.length} élèves trouvés', style: GoogleFonts.outfit(color: const Color(0xFF10B981), fontWeight: FontWeight.bold)),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha:0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.table_chart_rounded, color: Color(0xFF10B981)),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Aperçu des données', style: GoogleFonts.outfit(color: theme.textTheme.bodyLarge?.color, fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('${_previewStudents.length} élèves détectés', style: GoogleFonts.outfit(color: theme.textTheme.bodyMedium?.color?.withValues(alpha:0.7), fontSize: 14)),
+                ],
+              ),
             ],
           ),
         ),
         Expanded(
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: _previewStudents.length,
-            separatorBuilder: (c, i) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final student = _previewStudents[index];
-              return Container(
-                decoration: BoxDecoration(
-                  color: theme.cardTheme.color,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha:0.02), blurRadius: 4)],
-                  border: isDark ? Border.all(color: Colors.white.withValues(alpha:0.05)) : null,
+          child: Theme(
+            data: theme.copyWith(
+              dividerTheme: DividerThemeData(color: theme.dividerColor.withValues(alpha:0.1)),
+              dataTableTheme: DataTableThemeData(
+                headingTextStyle: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white),
+                dataTextStyle: GoogleFonts.outfit(color: theme.textTheme.bodyMedium?.color),
+              ),
+            ),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.vertical,
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: theme.cardTheme.color,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: theme.dividerColor.withValues(alpha:0.1)),
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha:0.02), blurRadius: 8)],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: DataTable(
+                      headingRowColor: WidgetStateProperty.all(const Color(0xFF10B981)),
+                      dataRowColor: WidgetStateProperty.resolveWith<Color?>((Set<WidgetState> states) {
+                        return null; // Transparent to let row decoration handle it if needed, or defaults
+                      }),
+                      border: TableBorder(
+                        horizontalInside: BorderSide(color: theme.dividerColor.withValues(alpha:0.1), width: 1),
+                        verticalInside: BorderSide(color: theme.dividerColor.withValues(alpha:0.1), width: 1),
+                      ),
+                      columns: const [
+                        DataColumn(label: Text('#')),
+                        DataColumn(label: Text('Nom & Prénom')),
+                        DataColumn(label: Text('Notes (N1, N2, N3)')),
+                        DataColumn(label: Text('Moyenne')),
+                        DataColumn(label: Text('Mention')),
+                        DataColumn(label: Text('Rang')),
+                        DataColumn(label: Text('Actions')),
+                      ],
+                      rows: List.generate(_previewStudents.length, (index) {
+                        final student = _previewStudents[index];
+                        final isEven = index % 2 == 0;
+                        final rowColor = isEven 
+                            ? (isDark ? Colors.white.withValues(alpha:0.02) : Colors.grey.withValues(alpha:0.02)) 
+                            : Colors.transparent;
+
+                        return DataRow(
+                          color: WidgetStateProperty.all(rowColor),
+                          cells: [
+                            DataCell(Text('${index + 1}', style: const TextStyle(fontWeight: FontWeight.bold))),
+                            DataCell(
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircleAvatar(
+                                    radius: 12,
+                                    backgroundColor: const Color(0xFF10B981).withValues(alpha:0.2),
+                                    child: Text(
+                                      student.name.isNotEmpty ? student.name[0] : '?',
+                                      style: const TextStyle(fontSize: 10, color: Color(0xFF10B981), fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(student.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                ],
+                              )
+                            ),
+                            DataCell(Text(
+                              student.grades.values.map((v) => v.toString()).join('  -  '),
+                              style: TextStyle(fontFamily: 'monospace', color: theme.textTheme.bodyMedium?.color?.withValues(alpha:0.8)),
+                            )),
+                            DataCell(
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: (student.average ?? 0) >= 10 
+                                      ? const Color(0xFF10B981).withValues(alpha:0.1) 
+                                      : Colors.red.withValues(alpha:0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  student.average?.toStringAsFixed(2) ?? '-',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: (student.average ?? 0) >= 10 ? const Color(0xFF10B981) : Colors.red,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            DataCell(
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: _getMentionColor(student.mention).withValues(alpha:0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  student.mention ?? '-',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                    color: _getMentionColor(student.mention),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            DataCell(
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: _getMentionColor(student.mention).withValues(alpha:0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  student.mention ?? '-',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                    color: _getMentionColor(student.mention),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            DataCell(Text(
+                              '${student.rank ?? '-'}',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            )),
+                            DataCell(
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, size: 18), 
+                                    color: Colors.blueAccent,
+                                    onPressed: () => _editStudent(index),
+                                    tooltip: 'Modifier',
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete, size: 18), 
+                                    color: Colors.redAccent,
+                                    onPressed: () => _deleteStudent(index),
+                                    tooltip: 'Supprimer',
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      }),
+                    ),
+                  ),
                 ),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: const Color(0xFF10B981).withValues(alpha:0.1),
-                    child: Text(student.name.isNotEmpty ? student.name[0] : '?', style: GoogleFonts.outfit(color: const Color(0xFF10B981), fontWeight: FontWeight.bold)),
-                  ),
-                  title: Text(student.name, style: GoogleFonts.outfit(color: theme.textTheme.bodyLarge?.color, fontWeight: FontWeight.bold)),
-                  subtitle: Text(
-                    'Moy: ${student.average?.toStringAsFixed(2) ?? "--"}',
-                    style: TextStyle(color: (student.average ?? 0) >= 10 ? const Color(0xFF10B981) : Colors.redAccent),
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(icon: Icon(Icons.edit, color: Colors.blueAccent.withValues(alpha:0.8), size: 20), onPressed: () => _editStudent(index)),
-                      IconButton(icon: Icon(Icons.delete, color: Colors.redAccent.withValues(alpha:0.8), size: 20), onPressed: () => _deleteStudent(index)),
-                    ],
-                  ),
-                ),
-              ).animate().fadeIn(delay: (50 * index).ms).slideX(begin: 0.1);
-            },
+              ),
+            ),
           ),
         ),
       ],
@@ -385,7 +575,7 @@ class _FileUploadPageState extends State<FileUploadPage> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: theme.brightness == Brightness.dark ? const Color(0xFF0F172A) : Colors.white,
+        color: theme.scaffoldBackgroundColor,
         border: Border(top: BorderSide(color: theme.dividerColor.withValues(alpha:0.1))),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha:0.05), blurRadius: 10, offset: const Offset(0, -4))],
       ),

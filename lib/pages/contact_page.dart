@@ -153,7 +153,13 @@ class _ContactPageState extends State<ContactPage> {
         controller: controller,
         maxLines: maxLines,
         style: GoogleFonts.outfit(color: theme.textTheme.bodyLarge?.color),
-        validator: (value) => value == null || value.isEmpty ? 'Ce champ est requis' : null,
+        validator: (value) {
+          if (value == null || value.isEmpty) return 'Ce champ est requis';
+          if (label == 'Email' && !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+            return 'Veuillez entrer un email valide';
+          }
+          return null;
+        },
         decoration: InputDecoration(
           labelText: label,
           labelStyle: TextStyle(color: theme.textTheme.bodyMedium?.color?.withValues(alpha:0.6)),

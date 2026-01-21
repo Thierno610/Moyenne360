@@ -154,10 +154,21 @@ class GradeService {
       if (student.grades.isNotEmpty) {
         double sum = student.grades.values.reduce((a, b) => a + b);
         student.average = double.parse((sum / student.grades.length).toStringAsFixed(2));
+        student.mention = _calculateMention(student.average!);
       } else {
         student.average = 0.0;
+        student.mention = _calculateMention(0.0);
       }
     }
+  }
+
+  String _calculateMention(double average) {
+    if (average >= 18) return 'Excellent';
+    if (average >= 16) return 'Très Bien';
+    if (average >= 14) return 'Bien';
+    if (average >= 12) return 'Assez Bien';
+    if (average >= 10) return 'Passable';
+    return 'Insuffisant';
   }
 
   void rankStudents(List<StudentGrade> students) {

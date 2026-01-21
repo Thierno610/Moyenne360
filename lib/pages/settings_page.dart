@@ -3,12 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:moyenne_auto/pages/profile_edit_page.dart'; // Ensure this is imported if used
+import 'package:moyenne_auto/pages/about_page.dart';
+import 'package:moyenne_auto/pages/contact_page.dart';
 import 'package:moyenne_auto/services/theme_service.dart';
 import 'package:moyenne_auto/services/auth_service.dart';
 
 
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+  final String username;
+  const SettingsPage({super.key, required this.username});
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -23,6 +26,16 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     _loadBiometricPreference();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final profile = await _authService.getUserProfile(widget.username);
+    if (profile != null) {
+      setState(() {
+        _userData = profile;
+      });
+    }
   }
 
   Future<void> _loadBiometricPreference() async {
@@ -119,9 +132,13 @@ class _SettingsPageState extends State<SettingsPage> {
                 children: [
                   _buildActionTile(Icons.help_outline, 'Aide & FAQ', () {}),
                   _buildDivider(),
-                  _buildActionTile(Icons.mail_outline, 'Nous contacter', () {}),
+                  _buildActionTile(Icons.mail_outline, 'Nous contacter', () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const ContactPage()));
+                  }),
                   _buildDivider(),
-                  _buildActionTile(Icons.info_outline, 'À propos', () {}),
+                  _buildActionTile(Icons.info_outline, 'À propos', () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const AboutPage()));
+                  }),
                 ],
               ),
             ),
@@ -163,6 +180,8 @@ class _SettingsPageState extends State<SettingsPage> {
           setState(() {
             _userData = result;
           });
+          // Persist changes
+          await _authService.saveUserProfile(widget.username, result);
         }
       },
       borderRadius: BorderRadius.circular(16),

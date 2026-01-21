@@ -23,7 +23,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -94,10 +94,61 @@ class DatabaseService {
     await db.execute('CREATE INDEX idx_grade_student ON grades(student_id)');
     await db.execute('CREATE INDEX idx_grade_subject ON grades(subject_id)');
     await db.execute('CREATE INDEX idx_subject_level ON subjects(level_id)');
+
+    // Table d'historique des imports
+    await db.execute('''
+      CREATE TABLE imported_files (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        path TEXT NOT NULL,
+        level TEXT NOT NULL,
+        student_count INTEGER NOT NULL,
+        imported_at TEXT NOT NULL
+      )
+    ''');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     // Gérer les migrations futures ici
+    if (oldVersion < 2) {
+       await db.execute('''
+        CREATE TABLE IF NOT EXISTS imported_files (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          path TEXT NOT NULL,
+          level TEXT NOT NULL,
+          student_count INTEGER NOT NULL,
+          imported_at TEXT NOT NULL
+        )
+      ''');
+    }
+  }
+
+  // ========== CRUD pour l'Historique des Imports ==========
+  Future<int> insertImportFile({
+    required String name, 
+    required String path, 
+    required String level, 
+    required int count,
+  }) async {
+    final db = await database;
+    return await db.insert('imported_files', {
+      'name': name,
+      'path': path,
+      'level': level,
+      'student_count': count,
+      'imported_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getImportFiles() async {
+    final db = await database;
+    return await db.query('imported_files', orderBy: 'imported_at DESC');
+  }
+
+  Future<void> deleteImportFile(int id) async {
+    final db = await database;
+    await db.delete('imported_files', where: 'id = ?', whereArgs: [id]);
   }
 
   // ========== CRUD pour les Niveaux ==========
@@ -226,30 +277,44 @@ class DatabaseService {
   Future<List<StudentGrade>> getStudentsWithAverages(int classId) async {
     final db = await database;
     
-    final students = await db.query(
+    // 1. Récupérer tous les étudiants de la classe
+    final studentsData = await db.query(
       'students',
       where: 'class_id = ?',
       whereArgs: [classId],
       orderBy: 'name',
     );
 
+    if (studentsData.isEmpty) return [];
+
+    // 2. Récupérer toutes les notes de la classe en une seule requête
+    final gradesData = await db.rawQuery('''
+      SELECT g.student_id, s.name as subject_name, g.value
+      FROM grades g
+      JOIN subjects s ON g.subject_id = s.id
+      JOIN students st ON g.student_id = st.id
+      WHERE st.class_id = ?
+    ''', [classId]);
+
+    // Groupement des notes par étudiant
+    final Map<int, Map<String, double>> gradesByStudent = {};
+    for (var row in gradesData) {
+      final studentId = row['student_id'] as int;
+      final subjectName = row['subject_name'] as String;
+      final value = row['value'] as double;
+      
+      gradesByStudent.putIfAbsent(studentId, () => {})[subjectName] = value;
+    }
+
     final List<StudentGrade> result = [];
 
-    for (var student in students) {
-      final grades = await db.rawQuery('''
-        SELECT s.name as subject_name, g.value
-        FROM grades g
-        JOIN subjects s ON g.subject_id = s.id
-        WHERE g.student_id = ?
-      ''', [student['id']]);
-
-      final Map<String, double> gradesMap = {};
-      for (var grade in grades) {
-        gradesMap[grade['subject_name'] as String] = grade['value'] as double;
-      }
+    for (var studentRow in studentsData) {
+      final studentId = studentRow['id'] as int;
+      final studentName = studentRow['name'] as String;
+      final gradesMap = gradesByStudent[studentId] ?? {};
 
       final studentGrade = StudentGrade(
-        name: student['name'] as String,
+        name: studentName,
         grades: gradesMap,
       );
 
@@ -257,6 +322,8 @@ class DatabaseService {
       if (gradesMap.isNotEmpty) {
         final sum = gradesMap.values.reduce((a, b) => a + b);
         studentGrade.average = double.parse((sum / gradesMap.length).toStringAsFixed(2));
+      } else {
+        studentGrade.average = 0.0;
       }
 
       result.add(studentGrade);
@@ -289,8 +356,29 @@ class DatabaseService {
     final db = await database;
     
     await db.transaction((txn) async {
+      // 1. Récupérer les infos de la classe et les matières une seule fois
+      final classData = await txn.query(
+        'classes',
+        where: 'id = ?',
+        whereArgs: [classId],
+      );
+      if (classData.isEmpty) return;
+
+      final levelId = classData.first['level_id'] as int;
+      final subjects = await txn.query(
+        'subjects',
+        where: 'level_id = ?',
+        whereArgs: [levelId],
+      );
+
+      // Créer une map pour un accès rapide aux IDs des matières par nom
+      final subjectMap = <String, int>{};
+      for (var s in subjects) {
+        subjectMap[s['name'] as String] = s['id'] as int;
+      }
+
       for (var student in students) {
-        // Insérer ou récupérer l'étudiant
+        // 2. Insérer ou récupérer l'étudiant
         final existingStudent = await txn.query(
           'students',
           where: 'name = ? AND class_id = ?',
@@ -311,41 +399,22 @@ class DatabaseService {
           studentId = existingStudent.first['id'] as int;
         }
 
-        // Récupérer les matières de la classe
-        final classData = await txn.query(
-          'classes',
-          where: 'id = ?',
-          whereArgs: [classId],
-        );
-        if (classData.isEmpty) continue;
-
-        final levelId = classData.first['level_id'] as int;
-        final subjects = await txn.query(
-          'subjects',
-          where: 'level_id = ?',
-          whereArgs: [levelId],
-        );
-
-        // Supprimer les anciennes notes de l'étudiant
+        // 3. Supprimer les anciennes notes de l'étudiant pour ces matières
         await txn.delete(
           'grades',
           where: 'student_id = ?',
           whereArgs: [studentId],
         );
 
-        // Insérer les nouvelles notes
+        // 4. Insérer les nouvelles notes
         for (var entry in student.grades.entries) {
-          final subject = subjects.firstWhere(
-            (s) => s['name'] == entry.key,
-            orElse: () => {},
-          );
-
-          if (subject.isNotEmpty) {
+          final subjectId = subjectMap[entry.key];
+          if (subjectId != null) {
             await txn.insert(
               'grades',
               {
                 'student_id': studentId,
-                'subject_id': subject['id'],
+                'subject_id': subjectId,
                 'value': entry.value,
                 'created_at': DateTime.now().toIso8601String(),
               },

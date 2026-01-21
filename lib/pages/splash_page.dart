@@ -55,8 +55,9 @@ class _SplashPageState extends State<SplashPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.white, // Or dynamic based on system theme initially
+      backgroundColor: theme.scaffoldBackgroundColor, 
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -80,7 +81,7 @@ class _SplashPageState extends State<SplashPage> {
               style: GoogleFonts.outfit(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
-                color: const Color(0xFF1E293B),
+                color: theme.textTheme.headlineLarge?.color ?? const Color(0xFF1E293B),
                 letterSpacing: 1.5,
               ),
             )
@@ -94,7 +95,7 @@ class _SplashPageState extends State<SplashPage> {
               'L\'excellence à portée de main',
               style: GoogleFonts.outfit(
                 fontSize: 16,
-                color: const Color(0xFF64748B),
+                color: theme.textTheme.bodyMedium?.color?.withValues(alpha:0.7) ?? const Color(0xFF64748B),
               ),
             )
             .animate()

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 
 class AboutPage extends StatefulWidget {
@@ -20,13 +21,17 @@ class _AboutPageState extends State<AboutPage> {
   }
 
   Future<void> _initPackageInfo() async {
-    // Mock or use package_info_plus if available, but for now mostly static or mock since we just added shared_prefs
-    // If package_info_plus isn't added, we can just hardcode or wrap in try-catch if the user adds it later.
-    // Given the prompt didn't ask to add package_info_plus, I'll stick to a hardcoded logic with a comment.
-    // Or simpler:
-    setState(() {
-      _version = '1.0.0 (Beta)';
-    });
+    try {
+      final info = await PackageInfo.fromPlatform();
+      setState(() {
+        _version = info.version;
+      });
+    } catch (e) {
+      debugPrint('Error loading package info: $e');
+      setState(() {
+        _version = '1.0.0';
+      });
+    }
   }
 
   @override
@@ -69,7 +74,7 @@ class _AboutPageState extends State<AboutPage> {
                   ],
                 ),
                 padding: const EdgeInsets.all(20),
-                child: Image.asset('assets/logo.png', errorBuilder: (c, o, s) => const Icon(Icons.school_rounded, size: 60, color: Color(0xFF10B981))),
+                child: Image.asset('assets/images/logo.png', errorBuilder: (c, o, s) => const Icon(Icons.school_rounded, size: 60, color: Color(0xFF10B981))),
               ),
             ).animate().scale(duration: 800.ms, curve: Curves.elasticOut),
 
