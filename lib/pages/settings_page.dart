@@ -20,13 +20,22 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   bool _notificationsEnabled = true;
   bool _biometricEnabled = false;
+  bool _isBiometricHardwareAvailable = false;
   final _authService = AuthService();
 
   @override
   void initState() {
     super.initState();
+    _checkBiometricHardware();
     _loadBiometricPreference();
     _loadProfile();
+  }
+
+  Future<void> _checkBiometricHardware() async {
+    final available = await _authService.isBiometricAvailable();
+    if (mounted) {
+      setState(() => _isBiometricHardwareAvailable = available);
+    }
   }
 
   Future<void> _loadProfile() async {
@@ -106,17 +115,21 @@ class _SettingsPageState extends State<SettingsPage> {
                       );
                     },
                   ),
-                  _buildDivider(),
-                  _buildSwitchTile(
-                    icon: Icons.fingerprint,
-                    title: 'Biométrie',
-                    subtitle: 'Connexion rapide',
-                    value: _biometricEnabled,
-                    onChanged: (v) async {
-                       setState(() => _biometricEnabled = v);
-                       await _authService.setBiometricEnabled(v);
-                    },
-                  ),
+                  if (_isBiometricHardwareAvailable) ...[
+                    _buildDivider(),
+                    _buildSwitchTile(
+                      icon: Icons.fingerprint,
+                      title: 'Biométrie',
+                      subtitle: 'Connexion rapide et sécurisée',
+                      value: _biometricEnabled,
+                      activeColor: const Color(0xFF3B82F6),
+                      iconColor: _biometricEnabled ? const Color(0xFF3B82F6) : null,
+                      onChanged: (v) async {
+                        setState(() => _biometricEnabled = v);
+                        await _authService.setBiometricEnabled(v);
+                      },
+                    ).animate().fadeIn(delay: 200.ms).slideX(begin: 0.1),
+                  ],
                 ],
               ),
             ),
@@ -236,13 +249,15 @@ class _SettingsPageState extends State<SettingsPage> {
     required String subtitle,
     required bool value,
     required ValueChanged<bool> onChanged,
+    Color activeColor = const Color(0xFF10B981),
+    Color? iconColor,
   }) {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          Icon(icon, color: theme.iconTheme.color?.withValues(alpha:0.7), size: 22),
+          Icon(icon, color: iconColor ?? theme.iconTheme.color?.withValues(alpha:0.7), size: 22),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -256,7 +271,7 @@ class _SettingsPageState extends State<SettingsPage> {
           Switch.adaptive(
             value: value,
             onChanged: onChanged,
-            activeColor: const Color(0xFF10B981),
+            activeColor: activeColor,
           ),
         ],
       ),

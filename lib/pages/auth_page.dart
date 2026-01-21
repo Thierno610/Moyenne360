@@ -412,17 +412,35 @@ class _AuthPageState extends State<AuthPage> {
               ],
               
               if (_isBioAvailable) ...[
-                const Padding(
+                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 20),
-                  child: Row(children: [Expanded(child: Divider()), Padding(padding: EdgeInsets.all(8.0), child: Text("OU")), Expanded(child: Divider())]),
+                  child: Row(children: [Expanded(child: Divider()), Padding(padding: EdgeInsets.all(8.0), child: Text("OU", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey))), Expanded(child: Divider())]),
                 ),
                  Center(
-                   child: IconButton(
-                     onPressed: _handleBiometricLogin, 
-                     icon: const Icon(Icons.fingerprint, size: 40, color: Color(0xFF10B981)),
-                     style: IconButton.styleFrom(backgroundColor: const Color(0xFF10B981).withValues(alpha:0.1), padding: const EdgeInsets.all(16)),
+                   child: Container(
+                     decoration: BoxDecoration(
+                       shape: BoxShape.circle,
+                       boxShadow: [
+                         BoxShadow(
+                           color: const Color(0xFF10B981).withValues(alpha:0.3),
+                           blurRadius: 20,
+                           spreadRadius: 2,
+                         )
+                       ],
+                     ),
+                     child: IconButton(
+                       onPressed: _handleBiometricLogin, 
+                       icon: const Icon(Icons.fingerprint, size: 44, color: Color(0xFF10B981)),
+                       style: IconButton.styleFrom(
+                         backgroundColor: const Color(0xFF10B981).withValues(alpha:0.15),
+                         padding: const EdgeInsets.all(20),
+                         side: const BorderSide(color: Color(0xFF10B981), width: 1),
+                       ),
+                     ),
                    ),
-                 ).animate().scale(delay: 200.ms),
+                 ).animate(onPlay: (c) => c.repeat())
+                  .shimmer(duration: 2.seconds, color: Colors.white.withValues(alpha:0.3))
+                  .scale(begin: const Offset(1, 1), end: const Offset(1.05, 1.05), curve: Curves.easeInOut, duration: 1.seconds),
               ]
             ],
           ),

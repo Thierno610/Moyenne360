@@ -16,7 +16,7 @@ import 'package:moyenne_auto/pages/import_history_page.dart';
 import 'package:moyenne_auto/services/grade_service.dart';
 import 'package:moyenne_auto/pages/manual_entry_page.dart';
 import 'package:moyenne_auto/pages/file_upload_page.dart';
-// auth_service removed
+import 'package:moyenne_auto/services/auth_service.dart';
 import 'package:moyenne_auto/services/export_service.dart';
 import 'package:moyenne_auto/services/database_service.dart';
 import 'package:moyenne_auto/pages/settings_page.dart';
@@ -966,7 +966,7 @@ class _MoyenneHomePageState extends State<MoyenneHomePage> {
               _DrawerItem(
                 icon: Icons.settings_outlined,
                 text: 'Paramètres',
-                onTap: () {
+                onTap: () async {
                   if (isDrawer) Navigator.pop(context); // Close Drawer
                   final result = await Navigator.push(
                     context,
